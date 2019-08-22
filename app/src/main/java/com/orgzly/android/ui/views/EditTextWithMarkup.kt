@@ -1,6 +1,9 @@
 package com.orgzly.android.ui.views
 
 import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.appcompat.widget.AppCompatEditText
 import android.text.Editable
 import android.text.TextWatcher
@@ -10,16 +13,39 @@ import com.orgzly.android.util.LogUtils
 import java.util.regex.Pattern
 
 class EditTextWithMarkup : AppCompatEditText {
+    private var vibrator: Vibrator? = null
     constructor(context: Context) : super(context) {
+        vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         addTextChangedListener(textWatcher)
     }
 
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {
+        vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         addTextChangedListener(textWatcher)
     }
 
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(context, attrs, defStyleAttr) {
+        vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         addTextChangedListener(textWatcher)
+    }
+
+    fun vibratePhone(ms: Long, amplitude: Int) {
+        val vib = this.vibrator;
+        if(vib != null) {
+            if (Build.VERSION.SDK_INT >= 26) {
+                vib.vibrate(VibrationEffect.createOneShot(ms, amplitude))
+            } else {
+                vib.vibrate(ms)
+            }
+        }
+    }
+
+    fun vibrateNewLine() {
+        vibratePhone(100, 100)
+    }
+
+    fun vibrateSpace() {
+        vibratePhone(50, 50)
     }
 
     private val textWatcher: TextWatcher = object: TextWatcher {
@@ -57,14 +83,16 @@ class EditTextWithMarkup : AppCompatEditText {
                 nextCheckboxPosition = -1
             }
             val lastCharIndex = start + count - 1;
-            if(lastCharIndex >= 0) {
+            if(lastCharIndex >= 0 && count >=1) {
                 val lastChar = s.get(lastCharIndex)
                 if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Last char", lastChar)
                 if (lastChar == ' ') {
                     if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "SPACE")
+                    vibrateSpace()
                 }
                 if (lastChar == '\n') {
                     if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "NEW LINE")
+                    vibrateNewLine()
                 }
             }
         }
