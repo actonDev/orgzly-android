@@ -56,6 +56,17 @@ class EditTextWithMarkup : AppCompatEditText {
             } else {
                 nextCheckboxPosition = -1
             }
+            val lastCharIndex = start + count - 1;
+            if(lastCharIndex >= 0) {
+                val lastChar = s.get(lastCharIndex)
+                if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Last char", lastChar)
+                if (lastChar == ' ') {
+                    if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "SPACE")
+                }
+                if (lastChar == '\n') {
+                    if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "NEW LINE")
+                }
+            }
         }
 
         override fun afterTextChanged(s: Editable) {
