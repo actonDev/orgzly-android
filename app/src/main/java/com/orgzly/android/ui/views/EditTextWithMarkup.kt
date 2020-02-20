@@ -41,11 +41,11 @@ class EditTextWithMarkup : AppCompatEditText {
     }
 
     fun vibrateNewLine() {
-        vibratePhone(100, 100)
+        vibratePhone(200, 200)
     }
 
     fun vibrateSpace() {
-        vibratePhone(50, 50)
+        vibratePhone(100, 100)
     }
 
     private val textWatcher: TextWatcher = object: TextWatcher {
