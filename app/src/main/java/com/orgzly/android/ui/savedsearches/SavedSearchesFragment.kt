@@ -6,12 +6,14 @@ import android.os.Bundle
 import android.view.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.orgzly.BuildConfig
 import com.orgzly.R
+import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.entity.SavedSearch
 import com.orgzly.android.savedsearch.FileSavedSearchStore
@@ -22,14 +24,13 @@ import com.orgzly.android.ui.drawer.DrawerItem
 import com.orgzly.android.ui.main.SharedMainActivityViewModel
 import com.orgzly.android.util.LogUtils
 import com.orgzly.databinding.FragmentSavedSearchesBinding
-import dagger.android.support.DaggerFragment
 import java.io.IOException
 import javax.inject.Inject
 
 /**
  * Displays and allows modifying saved searches.
  */
-class SavedSearchesFragment : DaggerFragment(), Fab, DrawerItem, OnViewHolderClickListener<SavedSearch> {
+class SavedSearchesFragment : Fragment(), Fab, DrawerItem, OnViewHolderClickListener<SavedSearch> {
     private lateinit var binding: FragmentSavedSearchesBinding
 
     private var listener: Listener? = null
@@ -53,6 +54,8 @@ class SavedSearchesFragment : DaggerFragment(), Fab, DrawerItem, OnViewHolderCli
     override fun onAttach(context: Context) {
         super.onAttach(context)
 
+        App.appComponent.inject(this)
+
         listener = activity as Listener
     }
 
@@ -62,15 +65,20 @@ class SavedSearchesFragment : DaggerFragment(), Fab, DrawerItem, OnViewHolderCli
         val factory = SavedSearchesViewModelFactory.getInstance(dataRepository)
         viewModel = ViewModelProviders.of(this, factory).get(SavedSearchesViewModel::class.java)
 
-        sharedMainActivityViewModel = activity?.let {
-            ViewModelProviders.of(it).get(SharedMainActivityViewModel::class.java)
-        } ?: throw IllegalStateException("No Activity")
+        sharedMainActivityViewModel = ViewModelProviders.of(requireActivity())
+                .get(SharedMainActivityViewModel::class.java)
 
         setHasOptionsMenu(true)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentSavedSearchesBinding.inflate(inflater, container, false)
+
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         viewAdapter = SavedSearchesAdapter(this)
         viewAdapter.setHasStableIds(true)
@@ -84,8 +92,6 @@ class SavedSearchesFragment : DaggerFragment(), Fab, DrawerItem, OnViewHolderCli
             it.adapter = viewAdapter
             it.addItemDecoration(dividerItemDecoration)
         }
-
-        return binding.root
     }
 
     override fun onPause() {
@@ -202,8 +208,9 @@ class SavedSearchesFragment : DaggerFragment(), Fab, DrawerItem, OnViewHolderCli
     }
 
     override fun onResume() {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
         super.onResume()
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
         announceChangesToActivity()
     }

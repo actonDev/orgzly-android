@@ -57,4 +57,14 @@ public class UriUtils {
                 .appendPath(newFilename) // New file name
                 .build();
     }
+
+    public static boolean isUrlSecure(String url) {
+        return url.matches("^(https|davs|webdavs)://.*");
+    }
+
+    public static boolean containsUser(String url) {
+        Uri uri = Uri.parse(url);
+
+        return uri.getUserInfo() != null;
+    }
 }

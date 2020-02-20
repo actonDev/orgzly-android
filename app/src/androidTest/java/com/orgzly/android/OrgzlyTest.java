@@ -3,6 +3,7 @@ package com.orgzly.android;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 
 import com.orgzly.R;
@@ -22,6 +23,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Calendar;
 
+import androidx.core.content.pm.PackageInfoCompat;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 /**
@@ -40,9 +42,9 @@ public class OrgzlyTest {
 
     private UserTimeFormatter userTimeFormatter;
 
-    protected DataRepository dataRepository;
+    protected LocalStorage localStorage;
 
-    protected RepoFactory repoFactory;
+    protected DataRepository dataRepository;
 
     private OrgzlyDatabase database;
 
@@ -54,24 +56,22 @@ public class OrgzlyTest {
 
         dbRepoBookRepository = new DbRepoBookRepository(database);
 
-        repoFactory = new RepoFactory(dbRepoBookRepository);
+        localStorage = new LocalStorage(context);
+
+        RepoFactory repoFactory = new RepoFactory(context, dbRepoBookRepository);
 
         dataRepository = new DataRepository(
-                context,
-                database,
-                repoFactory,
-                context.getResources(),
-                new LocalStorage(context));
+                context, database, repoFactory, context.getResources(), localStorage);
 
-        testUtils = new TestUtils(context, dataRepository, repoFactory, dbRepoBookRepository);
+        testUtils = new TestUtils(dataRepository, dbRepoBookRepository);
 
         userTimeFormatter = new UserTimeFormatter(context);
 
-        // new LocalStorage(context).cleanup();
-
-        dataRepository.clearDatabase();
+        // localStorage.cleanup();
 
         setupPreferences();
+
+        dataRepository.clearDatabase();
     }
 
     @After
@@ -98,7 +98,8 @@ public class OrgzlyTest {
     private void setPreferencesForTests() {
         /* Last used version. */
         try {
-            int versionCode = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionCode;
+            PackageInfo info = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            int versionCode = (int) PackageInfoCompat.getLongVersionCode(info);
             AppPreferences.lastUsedVersionCode(context, versionCode);
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();

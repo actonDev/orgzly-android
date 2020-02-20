@@ -27,13 +27,9 @@ abstract class RepoDao : BaseDao<Repo> {
     abstract fun delete(id: Long)
 
     @Transaction
-    open fun replace(id: Long, url: String) {
-        delete(id)
-        insert(Repo(0, url))
-    }
+    open fun deleteAndInsert(repo: Repo): Long {
+        delete(repo.id)
 
-    fun getOrInsert(repoUrl: String): Long =
-            get(repoUrl).let {
-                it?.id ?: insert(Repo(0, repoUrl))
-            }
+        return insert(Repo(0, repo.type, repo.url))
+    }
 }

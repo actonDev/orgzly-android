@@ -16,12 +16,14 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.orgzly.BuildConfig
 import com.orgzly.R
+import com.orgzly.android.App
 import com.orgzly.android.db.entity.Repo
 import com.orgzly.android.repos.*
 import com.orgzly.android.ui.CommonActivity
-import com.orgzly.android.ui.repo.DirectoryRepoActivity
-import com.orgzly.android.ui.repo.DropboxRepoActivity
+import com.orgzly.android.ui.repo.directory.DirectoryRepoActivity
+import com.orgzly.android.ui.repo.dropbox.DropboxRepoActivity
 import com.orgzly.android.ui.repo.git.GitRepoActivity
+import com.orgzly.android.ui.repo.webdav.WebdavRepoActivity
 import com.orgzly.databinding.ActivityReposBinding
 import javax.inject.Inject
 
@@ -39,6 +41,8 @@ class ReposActivity : CommonActivity(), AdapterView.OnItemClickListener, Activit
     lateinit var viewModel: ReposViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        App.appComponent.inject(this)
+
         super.onCreate(savedInstanceState)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_repos)
@@ -49,7 +53,7 @@ class ReposActivity : CommonActivity(), AdapterView.OnItemClickListener, Activit
 
         listAdapter = object : ArrayAdapter<Repo>(this, R.layout.item_repo, R.id.item_repo_url) {
             override fun getItemId(position: Int): Long {
-                return getItem(position).id
+                return getItem(position)?.id ?: 0
             }
         }
 
@@ -111,6 +115,10 @@ class ReposActivity : CommonActivity(), AdapterView.OnItemClickListener, Activit
             }
         }
 
+        binding.activityReposWebdav.setOnClickListener {
+            startRepoActivity(R.id.repos_options_menu_item_new_webdav)
+        }
+
         binding.activityReposDirectory.setOnClickListener {
             startRepoActivity(R.id.repos_options_menu_item_new_directory)
         }
@@ -168,6 +176,11 @@ class ReposActivity : CommonActivity(), AdapterView.OnItemClickListener, Activit
                 return true
             }
 
+            R.id.repos_options_menu_item_new_webdav -> {
+                startRepoActivity(item.itemId)
+                return true
+            }
+
             R.id.repos_options_menu_item_new_directory -> {
                 startRepoActivity(item.itemId)
                 return true
@@ -212,6 +225,11 @@ class ReposActivity : CommonActivity(), AdapterView.OnItemClickListener, Activit
                 return
             }
 
+            R.id.repos_options_menu_item_new_webdav -> {
+                WebdavRepoActivity.start(this)
+                return
+            }
+
             R.id.repos_options_menu_item_new_directory -> {
                 DirectoryRepoActivity.start(this)
                 return
@@ -222,19 +240,33 @@ class ReposActivity : CommonActivity(), AdapterView.OnItemClickListener, Activit
     }
 
     private fun openRepo(repoEntity: Repo) {
-        val repo = repoFactory.getFromUri(this, repoEntity.url, dataRepository)
+        // Validate before opening
+        try {
+            dataRepository.getRepoInstance(repoEntity.id, repoEntity.type, repoEntity.url)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            showSnackbar(getString(R.string.repository_not_valid_with_reason, e.message))
+            return
+        }
 
-        if (repo is DropboxRepo || repo is MockRepo) { // TODO: Remove Mock from here
-            DropboxRepoActivity.start(this, repoEntity.id)
+        when (repoEntity.type) {
+            RepoType.MOCK -> // TODO: Remove
+                DropboxRepoActivity.start(this, repoEntity.id)
 
-        } else if (repo is DirectoryRepo || repo is ContentRepo) {
-            DirectoryRepoActivity.start(this, repoEntity.id)
+            RepoType.DROPBOX ->
+                DropboxRepoActivity.start(this, repoEntity.id)
 
-        } else if (repo is GitRepo) {
-            GitRepoActivity.start(this, repoEntity.id)
+            RepoType.DIRECTORY ->
+                DirectoryRepoActivity.start(this, repoEntity.id)
 
-        } else {
-            showSnackbar(R.string.message_unsupported_repository_type)
+            RepoType.DOCUMENT ->
+                DirectoryRepoActivity.start(this, repoEntity.id)
+
+            RepoType.WEBDAV ->
+                WebdavRepoActivity.start(this, repoEntity.id)
+
+            RepoType.GIT ->
+                GitRepoActivity.start(this, repoEntity.id)
         }
     }
 

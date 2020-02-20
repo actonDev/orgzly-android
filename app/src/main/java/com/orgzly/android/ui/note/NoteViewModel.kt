@@ -1,8 +1,10 @@
 package com.orgzly.android.ui.note
 
 import android.os.Bundle
+import android.text.TextUtils
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.orgzly.R
 import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.data.mappers.OrgMapper
@@ -24,7 +26,7 @@ import com.orgzly.org.parser.OrgParserWriter
 class NoteViewModel(
         private val dataRepository: DataRepository,
         var bookId: Long,
-        private val noteId: Long,
+        private var noteId: Long,
         private val place: Place?,
         private val title: String?,
         private val content: String?
@@ -41,8 +43,11 @@ class NoteViewModel(
 
     val noteDetailsDataEvent: SingleLiveEvent<NoteDetailsData> = SingleLiveEvent()
 
+    val noteCreatedEvent: SingleLiveEvent<Note> = SingleLiveEvent()
+    val noteUpdatedEvent: SingleLiveEvent<Note> = SingleLiveEvent()
     val noteDeletedEvent: SingleLiveEvent<Int> = SingleLiveEvent()
 
+    val noteDeleteRequest: SingleLiveEvent<Int> = SingleLiveEvent()
     val bookChangeRequestEvent: SingleLiveEvent<List<BookView>> = SingleLiveEvent()
 
     var notePayload: NotePayload? = null
@@ -83,6 +88,13 @@ class NoteViewModel(
         }
     }
 
+    fun requestNoteDelete() {
+        App.EXECUTORS.diskIO().execute {
+            val count = dataRepository.getNotesAndSubtreesCount(setOf(noteId))
+            noteDeleteRequest.postValue(count)
+        }
+    }
+
     fun deleteNote() {
         App.EXECUTORS.diskIO().execute {
             val useCase = NoteDelete(bookId, setOf(noteId))
@@ -99,35 +111,11 @@ class NoteViewModel(
         }
     }
 
-    fun onBreadcrumbsBook(data: NoteDetailsData) {
-        data.note?.note?.id?.let { noteId ->
-            App.EXECUTORS.diskIO().execute {
-                UseCaseRunner.run(BookSparseTreeForNote(noteId))
-            }
-        }
-    }
-
-    fun onBreadcrumbsNote(bookId: Long, note: Note) {
-        when (AppPreferences.breadcrumbsTarget(App.getAppContext())) {
-            "note_details" ->
-                MainActivity.openSpecificNote(bookId, note.id)
-
-            "book_and_sparse_tree" ->
-                App.EXECUTORS.diskIO().execute {
-                    UseCaseRunner.run(BookSparseTreeForNote(note.id))
-                }
-
-            "book_and_scroll" ->
-                App.EXECUTORS.diskIO().execute {
-                    UseCaseRunner.run(BookScrollToNote(note.id))
-                }
-        }
-    }
-
     enum class ViewEditMode {
         VIEW,
-        EDIT,
-        EDIT_WITH_KEYBOARD
+        EDIT_TITLE,
+        EDIT_TITLE_WITH_KEYBOARD,
+        EDIT_CONTENT_WITH_KEYBOARD
     }
 
     val viewEditMode = MutableLiveData<ViewEditMode>(startMode())
@@ -135,19 +123,19 @@ class NoteViewModel(
     private fun startMode(): ViewEditMode {
         // Always start new notes in edit mode
         if (isNew()) {
-            return ViewEditMode.EDIT_WITH_KEYBOARD
+            return ViewEditMode.EDIT_CONTENT_WITH_KEYBOARD
         }
 
         return when (AppPreferences.noteDetailsOpeningMode(App.getAppContext())) {
             "last" ->
                 return when (AppPreferences.noteDetailsLastMode(App.getAppContext())) {
                     "view" -> ViewEditMode.VIEW
-                    "edit" -> ViewEditMode.EDIT
-                    else -> ViewEditMode.EDIT
+                    "edit" -> ViewEditMode.EDIT_TITLE
+                    else -> ViewEditMode.EDIT_TITLE
                 }
             "view" -> ViewEditMode.VIEW
-            "edit" -> ViewEditMode.EDIT
-            else -> ViewEditMode.EDIT
+            "edit" -> ViewEditMode.EDIT_TITLE
+            else -> ViewEditMode.EDIT_TITLE
         }
     }
 
@@ -158,10 +146,11 @@ class NoteViewModel(
         val context = App.getAppContext()
 
         viewEditMode.value  = when (viewEditMode.value) {
-            ViewEditMode.VIEW -> ViewEditMode.EDIT_WITH_KEYBOARD
-            ViewEditMode.EDIT -> ViewEditMode.VIEW
-            ViewEditMode.EDIT_WITH_KEYBOARD -> ViewEditMode.VIEW
-            null -> ViewEditMode.EDIT
+            ViewEditMode.VIEW -> ViewEditMode.EDIT_CONTENT_WITH_KEYBOARD
+            ViewEditMode.EDIT_TITLE -> ViewEditMode.VIEW
+            ViewEditMode.EDIT_TITLE_WITH_KEYBOARD -> ViewEditMode.VIEW
+            ViewEditMode.EDIT_CONTENT_WITH_KEYBOARD -> ViewEditMode.VIEW
+            null -> ViewEditMode.EDIT_TITLE
         }
 
         // Only remember last mode when opening existing notes
@@ -208,21 +197,18 @@ class NoteViewModel(
     }
 
     fun updatePayloadScheduledTime(range: OrgRange?) {
-        notePayload = notePayload?.copy(scheduled = range.toString())
+        notePayload = notePayload?.copy(scheduled = range?.toString())
     }
 
     fun updatePayloadDeadlineTime(range: OrgRange?) {
-        notePayload = notePayload?.copy(deadline = range.toString())
+        notePayload = notePayload?.copy(deadline = range?.toString())
     }
 
     fun updatePayloadClosedTime(range: OrgRange?) {
-        notePayload = notePayload?.copy(closed = range.toString())
+        notePayload = notePayload?.copy(closed = range?.toString())
     }
 
-    val noteCreatedEvent: SingleLiveEvent<Note> = SingleLiveEvent()
-    val noteUpdatedEvent: SingleLiveEvent<Note> = SingleLiveEvent()
-
-    fun createNote() {
+    private fun createNote(postSave: ((note: Note) -> Unit)?) {
         val notePlace = if (place != Place.UNSPECIFIED)
             NotePlace(bookId, noteId, place)
         else
@@ -232,18 +218,33 @@ class NoteViewModel(
             App.EXECUTORS.diskIO().execute {
                 catchAndPostError {
                     val result = UseCaseRunner.run(NoteCreate(payload, notePlace))
-                    noteCreatedEvent.postValue(result.userData as Note)
+                    val note = result.userData as Note
+
+                    // Update note ID after creating note
+                    noteId = note.id
+
+                    if (postSave != null) {
+                        postSave(note)
+                    } else {
+                        noteCreatedEvent.postValue(note)
+                    }
                 }
             }
         }
     }
 
-    fun updateNote(id: Long) {
+    private fun updateNote(postSave: ((note: Note) -> Unit)?) {
         notePayload?.let { payload ->
             App.EXECUTORS.diskIO().execute {
                 catchAndPostError {
-                    val result = UseCaseRunner.run(NoteUpdate(id, payload))
-                    noteUpdatedEvent.postValue(result.userData as Note)
+                    val result = UseCaseRunner.run(NoteUpdate(noteId, payload))
+                    val note = result.userData as Note
+
+                    if (postSave != null) {
+                        postSave(note)
+                    } else {
+                        noteUpdatedEvent.postValue(note)
+                    }
                 }
             }
         }
@@ -280,4 +281,60 @@ class NoteViewModel(
         bookId = b.book.id
         bookView.value = b
     }
+
+    fun followBookBreadcrumb() {
+        App.EXECUTORS.diskIO().execute {
+            catchAndPostError {
+                UseCaseRunner.run(BookSparseTreeForNote(noteId))
+            }
+        }
+    }
+
+    fun followNoteBreadcrumb(ancestor: Note) {
+        when (AppPreferences.breadcrumbsTarget(App.getAppContext())) {
+            "note_details" ->
+                MainActivity.openSpecificNote(bookId, ancestor.id)
+
+            "book_and_sparse_tree" ->
+                App.EXECUTORS.diskIO().execute {
+                    UseCaseRunner.run(BookSparseTreeForNote(ancestor.id))
+                }
+
+            "book_and_scroll" ->
+                App.EXECUTORS.diskIO().execute {
+                    UseCaseRunner.run(BookScrollToNote(ancestor.id))
+                }
+
+        }
+
+    }
+
+    fun saveNote(postSave: ((note: Note) -> Unit)? = null) {
+        if (isBookSet() && isTitleValid()) {
+            if (isNew()) {
+                createNote(postSave)
+            } else {
+                updateNote(postSave)
+            }
+        }
+    }
+
+    private fun isTitleValid(): Boolean {
+        return if (TextUtils.isEmpty(notePayload?.title)) {
+            snackBarMessage.postValue(R.string.title_can_not_be_empty)
+            false
+        } else {
+            true
+        }
+    }
+
+    private fun isBookSet(): Boolean {
+        return if (bookId == 0L) {
+            snackBarMessage.postValue(R.string.note_book_not_set)
+            false
+        } else {
+            true
+        }
+    }
+
 }

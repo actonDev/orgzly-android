@@ -19,6 +19,7 @@
 
             <!-- Entire note -->
             <LinearLayout
+                android:id="@+id/fragment_note_content"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingTop="@dimen/screen_edge"
@@ -57,12 +58,12 @@
 
                 <!-- Selectable notebook -->
                 <TextView
+                    android:id="@+id/fragment_note_location_button"
                     style="@style/NoteFragmentListItemSpinnerButton"
                     android:layout_marginLeft="@dimen/screen_edge"
                     android:layout_marginStart="@dimen/screen_edge"
                     android:layout_marginRight="@dimen/screen_edge"
                     android:layout_marginEnd="@dimen/screen_edge"
-                    android:id="@+id/fragment_note_location_button"
                     tools:text="GTD"
                     android:visibility="gone"/>
 
@@ -290,7 +291,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="@dimen/screen_edge"
                     android:layout_marginRight="@dimen/screen_edge"
-                    android:layout_marginTop="@dimen/ui_element_spacing"
+                    android:layout_marginTop="@dimen/space_between_content_areas"
                     android:inputType="text|textCapSentences|textMultiLine"
                     android:hint="@string/fragment_note_content_hint"
                     android:gravity="start|top"
@@ -305,7 +306,7 @@
                     android:minHeight="48dp"
                     android:layout_marginLeft="@dimen/screen_edge"
                     android:layout_marginRight="@dimen/screen_edge"
-                    android:layout_marginTop="@dimen/ui_element_spacing"
+                    android:layout_marginTop="@dimen/space_between_content_areas"
                     android:freezesText="true"
                     android:gravity="start|top"
                     android:textIsSelectable="true"

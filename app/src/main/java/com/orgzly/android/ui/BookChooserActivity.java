@@ -9,13 +9,17 @@ import android.widget.Toast;
 
 import com.orgzly.BuildConfig;
 import com.orgzly.R;
+import com.orgzly.android.App;
 import com.orgzly.android.AppIntent;
+import com.orgzly.android.BookFormat;
 import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.db.entity.Book;
 import com.orgzly.android.BookUtils;
 import com.orgzly.android.ui.books.BooksFragment;
 import com.orgzly.android.ui.main.MainActivity;
 import com.orgzly.android.util.LogUtils;
+
+import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
 
@@ -34,6 +38,8 @@ public class BookChooserActivity extends CommonActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        App.appComponent.inject(this);
+
         super.onCreate(savedInstanceState);
 
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState);
@@ -127,7 +133,7 @@ public class BookChooserActivity extends CommonActivity
     }
 
     @Override
-    public void onBookExportRequest(long bookId) {
+    public void onBookExportRequest(@NotNull Book book, @NotNull BookFormat format) {
     }
 
     @Override

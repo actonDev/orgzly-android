@@ -43,14 +43,23 @@ public class DropboxClient {
     /* The empty string ("") represents the root folder in Dropbox API v2. */
     private static final String ROOT_PATH = "";
 
-    private Context mContext;
+    final private Context mContext;
+    final private long repoId;
+
     private DbxClientV2 dbxClient;
+
     private boolean tryLinking = false;
 
-    public DropboxClient(Context context) {
+    public DropboxClient(Context context, long id) {
         mContext = context;
 
-        String accessToken = loadToken();
+        repoId = id;
+
+        createClient();
+    }
+
+    private void createClient() {
+        String accessToken = getToken();
 
         if (accessToken != null) {
             dbxClient = getDbxClient(accessToken);
@@ -61,7 +70,7 @@ public class DropboxClient {
         return dbxClient != null;
     }
 
-    public void linkedOrThrow() throws IOException {
+    private void linkedOrThrow() throws IOException {
         if (! isLinked()) {
             throw new IOException(NOT_LINKED);
         }
@@ -80,7 +89,7 @@ public class DropboxClient {
 
     public boolean finishAuthentication() {
         if (dbxClient == null && tryLinking) {
-            String accessToken = loadToken();
+            String accessToken = getToken();
 
             if (accessToken == null) {
                 accessToken = Auth.getOAuth2Token();
@@ -113,11 +122,16 @@ public class DropboxClient {
         return new DbxClientV2(requestConfig, accessToken);
     }
 
+    public void setToken(String token) {
+        saveToken(token);
+        createClient();
+    }
+
     private void saveToken(String token) {
         AppPreferences.dropboxToken(mContext, token);
     }
 
-    private String loadToken() {
+    public String getToken() {
         return AppPreferences.dropboxToken(mContext);
     }
 
@@ -152,6 +166,8 @@ public class DropboxClient {
                             if (BookName.isSupportedFormatFileName(file.getName())) {
                                 Uri uri = repoUri.buildUpon().appendPath(file.getName()).build();
                                 VersionedRook book = new VersionedRook(
+                                        repoId,
+                                        RepoType.DROPBOX,
                                         repoUri,
                                         uri,
                                         file.getRev(),
@@ -212,7 +228,7 @@ public class DropboxClient {
 
                 dbxClient.files().download(metadata.getPathLower(), rev).download(out);
 
-                return new VersionedRook(repoUri, uri, rev, mtime);
+                return new VersionedRook(repoId, RepoType.DROPBOX, repoUri, uri, rev, mtime);
 
             } else {
                 throw new IOException("Failed downloading Dropbox file " + uri + ": Not a file");
@@ -260,14 +276,18 @@ public class DropboxClient {
         String rev = metadata.getRev();
         long mtime = metadata.getServerModified().getTime();
 
-        return new VersionedRook(repoUri, bookUri, rev, mtime);
+        return new VersionedRook(repoId, RepoType.DROPBOX, repoUri, bookUri, rev, mtime);
     }
 
     public void delete(String path) throws IOException {
         linkedOrThrow();
 
         try {
-            dbxClient.files().deleteV2(path);
+            if (dbxClient.files().getMetadata(path) instanceof FileMetadata) {
+                dbxClient.files().deleteV2(path);
+            } else {
+                throw new IOException("Not a file: " + path);
+            }
 
         } catch (DbxException e) {
             e.printStackTrace();
@@ -296,7 +316,7 @@ public class DropboxClient {
             String rev = fileMetadata.getRev();
             long mtime = fileMetadata.getServerModified().getTime();
 
-            return new VersionedRook(repoUri, to, rev, mtime);
+            return new VersionedRook(repoId, RepoType.DROPBOX, repoUri, to, rev, mtime);
 
         } catch (Exception e) {
             e.printStackTrace();

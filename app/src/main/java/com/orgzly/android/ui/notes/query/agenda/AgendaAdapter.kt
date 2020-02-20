@@ -23,7 +23,7 @@ class AgendaAdapter(
         private val context: Context,
         private val clickListener: OnViewHolderClickListener<AgendaItem>,
         private val quickBar: QuickBars
- ) : ListAdapter<AgendaItem, RecyclerView.ViewHolder>(DIFF_CALLBACK), SelectableItemAdapter {
+) : ListAdapter<AgendaItem, RecyclerView.ViewHolder>(DIFF_CALLBACK), SelectableItemAdapter {
 
     private val adapterSelection: Selection = Selection()
 
@@ -45,15 +45,20 @@ class AgendaAdapter(
 
         return when (viewType) {
             DIVIDER_ITEM_TYPE -> {
-                DividerViewHolder(
-                        ItemAgendaDividerBinding.inflate(
-                                LayoutInflater.from(context), parent, false))
+                val binding = ItemAgendaDividerBinding.inflate(
+                        LayoutInflater.from(context), parent, false)
+
+                NoteItemViewBinder.setupSpacingForDensitySetting(context, binding)
+
+                DividerViewHolder(binding)
             }
 
             else -> {
-                NoteItemViewHolder(
-                        ItemHeadBinding.inflate(LayoutInflater.from(context), parent, false),
-                        viewHolderListener)
+                val binding = ItemHeadBinding.inflate(LayoutInflater.from(context), parent, false)
+
+                NoteItemViewBinder.setupSpacingForDensitySetting(context, binding)
+
+                NoteItemViewHolder(binding, viewHolderListener)
             }
         }
     }
@@ -69,7 +74,7 @@ class AgendaAdapter(
             val holder = h as NoteItemViewHolder
             val item = getItem(position) as AgendaItem.Note
 
-            noteViewBinder.bind(holder, item.note)
+            noteViewBinder.bind(holder, item.note, item.timeType)
 
             quickBar.bind(holder)
 
@@ -78,15 +83,7 @@ class AgendaAdapter(
     }
 
     private fun bindDividerView(holder: DividerViewHolder, item: AgendaItem.Divider) {
-        val margins = NoteItemViewBinder.getMarginsForListDensity(context)
-
         holder.binding.itemAgendaTimeText.text = userTimeFormatter.formatDate(item.day)
-
-        holder.binding.root.setPadding(
-                holder.binding.root.paddingLeft,
-                margins.first,
-                holder.binding.root.paddingRight,
-                margins.first)
     }
 
     inner class DividerViewHolder(val binding: ItemAgendaDividerBinding) :
@@ -123,14 +120,19 @@ class AgendaAdapter(
                     }
 
                     override fun areContentsTheSame(oldItem: AgendaItem, newItem: AgendaItem): Boolean {
-                        if (oldItem is AgendaItem.Note && newItem is AgendaItem.Note) {
-                            return oldItem == newItem // TODO: Compare content
+                        return if (oldItem is AgendaItem.Note && newItem is AgendaItem.Note) {
+                            // Specifying type to remove the error when comparing below:
+                            // Suspicious equality check: equals() is not implemented in AgendaItem
+                            val old: AgendaItem.Note = oldItem
+                            val new: AgendaItem.Note = newItem
+
+                            old == new
 
                         } else if (oldItem is AgendaItem.Divider && newItem is AgendaItem.Divider) {
-                            return oldItem.day == newItem.day
+                            oldItem.day == newItem.day
 
                         } else {
-                            return false
+                            false
                         }
                     }
                 }

@@ -1,16 +1,22 @@
 package com.orgzly.android
 
+import android.annotation.SuppressLint
 import com.orgzly.android.di.DaggerAppComponent
 import com.orgzly.android.di.module.ApplicationModule
 import com.orgzly.android.di.module.DatabaseModule
-import dagger.android.AndroidInjector
-import dagger.android.DaggerApplication
 import android.os.StrictMode
 
 
+@SuppressLint("Registered")
 class AppUnderTest : App() {
     override fun onCreate() {
         super.onCreate()
+
+        appComponent = DaggerAppComponent
+                .builder()
+                .applicationModule(ApplicationModule(this))
+                .databaseModule(DatabaseModule(testing = true))
+                .build()
 
         if (false) {
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder()
@@ -27,15 +33,5 @@ class AppUnderTest : App() {
                     // .penaltyDeath()
                     .build())
         }
-    }
-
-    override fun applicationInjector(): AndroidInjector<out DaggerApplication> {
-        appComponent = DaggerAppComponent
-                .builder()
-                .applicationModule(ApplicationModule(this))
-                .databaseModule(DatabaseModule(testing = true))
-                .build()
-
-        return appComponent
     }
 }

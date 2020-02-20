@@ -5,9 +5,12 @@ import android.view.View;
 import android.widget.DatePicker;
 import android.widget.TimePicker;
 
+import androidx.test.rule.ActivityTestRule;
+
 import com.orgzly.R;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.db.entity.NotePosition;
+import com.orgzly.android.repos.RepoType;
 import com.orgzly.android.ui.main.MainActivity;
 import com.orgzly.android.ui.repos.ReposActivity;
 
@@ -17,8 +20,6 @@ import org.junit.Test;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-
-import androidx.test.rule.ActivityTestRule;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
@@ -61,12 +62,9 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertTrue;
 
-
-//@Ignore
-@SuppressWarnings("unchecked")
 public class MiscTest extends OrgzlyTest {
     @Rule
-    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class, true, false);
+    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class);
 
     @Test
     public void testLftRgt() {
@@ -158,23 +156,23 @@ public class MiscTest extends OrgzlyTest {
         onView(withText("DONE")).perform(click());
 
         onNoteInBook(1, R.id.item_head_title).check(matches(allOf(withText("DONE  Note #1."), isDisplayed())));
-        onNoteInBook(1, R.id.item_head_closed).check(matches(isDisplayed()));
+        onNoteInBook(1, R.id.item_head_closed_text).check(matches(isDisplayed()));
         onNoteInBook(1).check(matches(isHighlighted()));
 
         onNoteInBook(2, R.id.item_head_title).check(matches(allOf(withText("DONE  Note #2."), isDisplayed())));
-        onNoteInBook(2, R.id.item_head_closed).check(matches(isDisplayed()));
+        onNoteInBook(2, R.id.item_head_closed_text).check(matches(isDisplayed()));
         onNoteInBook(2).check(matches(isHighlighted()));
 
         onNoteInBook(3, R.id.item_head_title).check(matches(allOf(withText("DONE  Note #3."), isDisplayed())));
-        onNoteInBook(3, R.id.item_head_closed).check(matches(isDisplayed()));
+        onNoteInBook(3, R.id.item_head_closed_text).check(matches(isDisplayed()));
         onNoteInBook(3).check(matches(isHighlighted()));
 
         onNoteInBook(4, R.id.item_head_title).check(matches(allOf(withText("Note #4."), isDisplayed())));
-        onNoteInBook(4, R.id.item_head_closed).check(matches(not(isDisplayed())));
+        onNoteInBook(4, R.id.item_head_closed_text).check(matches(not(isDisplayed())));
         onNoteInBook(4).check(matches(not(isHighlighted())));
 
         onNoteInBook(5, R.id.item_head_title).check(matches(allOf(withText("DONE  Note #5."), isDisplayed())));
-        onNoteInBook(5, R.id.item_head_closed).check(matches(isDisplayed()));
+        onNoteInBook(5, R.id.item_head_closed_text).check(matches(isDisplayed()));
         onNoteInBook(5).check(matches(not(isHighlighted())));
     }
 
@@ -336,28 +334,28 @@ public class MiscTest extends OrgzlyTest {
         onView(withId(R.id.bottom_action_bar_state)).perform(click());
         onView(withText("DONE")).perform(click());
         onNoteInBook(1, R.id.item_head_title).check(matches(withText(startsWith("TODO"))));
-        onNoteInBook(1, R.id.item_head_closed).check(matches(not(isDisplayed())));
+        onNoteInBook(1, R.id.item_head_closed_text).check(matches(not(isDisplayed())));
         onNoteInBook(1, R.id.item_head_scheduled_text).check(matches(withText(userDateTime("<2015-01-24 Sat 04:05 +6d>"))));
 
         /* DONE -> NOTE */
         onView(withId(R.id.bottom_action_bar_state)).perform(click());
         onView(withText(R.string.clear)).perform(click());
         onNoteInBook(1, R.id.item_head_title).check(matches(withText(startsWith("Note"))));
-        onNoteInBook(1, R.id.item_head_closed).check(matches(not(isDisplayed())));
+        onNoteInBook(1, R.id.item_head_closed_text).check(matches(not(isDisplayed())));
         onNoteInBook(1, R.id.item_head_scheduled_text).check(matches(withText(userDateTime("<2015-01-24 Sat 04:05 +6d>"))));
 
         /* NOTE -> DONE */
         onView(withId(R.id.bottom_action_bar_state)).perform(click());
         onView(withText("DONE")).perform(click());
         onNoteInBook(1, R.id.item_head_title).check(matches(withText(startsWith("Note"))));
-        onNoteInBook(1, R.id.item_head_closed).check(matches(not(isDisplayed())));
+        onNoteInBook(1, R.id.item_head_closed_text).check(matches(not(isDisplayed())));
         onNoteInBook(1, R.id.item_head_scheduled_text).check(matches(withText(userDateTime("<2015-01-30 Fri 04:05 +6d>"))));
 
         /* NOTE -> OLD */
         onView(withId(R.id.bottom_action_bar_state)).perform(click());
         onView(withText("OLD")).perform(click());
         onNoteInBook(1, R.id.item_head_title).check(matches(withText(startsWith("Note"))));
-        onNoteInBook(1, R.id.item_head_closed).check(matches(not(isDisplayed())));
+        onNoteInBook(1, R.id.item_head_closed_text).check(matches(not(isDisplayed())));
         onNoteInBook(1, R.id.item_head_scheduled_text).check(matches(withText(userDateTime("<2015-02-05 Thu 04:05 +6d>"))));
     }
 
@@ -434,8 +432,8 @@ public class MiscTest extends OrgzlyTest {
      */
     @Test
     public void testMainActivityFragments() {
-        testUtils.setupRepo("file:/");
-        testUtils.setupRepo("dropbox:/orgzly");
+        testUtils.setupRepo(RepoType.DIRECTORY, "file:/");
+        testUtils.setupRepo(RepoType.DROPBOX, "dropbox:/orgzly");
         testUtils.setupBook("book-one", "Preface\n\n* Note");
         activityRule.launchActivity(null);
 
@@ -480,10 +478,10 @@ public class MiscTest extends OrgzlyTest {
 
     @Test
     public void testReposActivityFragments() {
-        ActivityTestRule rule = new EspressoActivityTestRule<>(ReposActivity.class, true, false);
+        ActivityTestRule rule = new EspressoActivityTestRule<>(ReposActivity.class);
 
-        testUtils.setupRepo("file:/");
-        testUtils.setupRepo("dropbox:/orgzly");
+        testUtils.setupRepo(RepoType.DIRECTORY, "file:/");
+        testUtils.setupRepo(RepoType.DROPBOX, "dropbox:/orgzly");
         testUtils.setupBook("book-one", "Preface\n\n* Note");
         rule.launchActivity(null);
 

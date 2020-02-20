@@ -69,7 +69,7 @@ class EditTextWithMarkup : AppCompatEditText {
                 val m = p.matcher(line)
                 if (m.find()) {
                     nextCheckboxPosition = start + 1
-                    nextCheckboxIndent = m.group(1)
+                    nextCheckboxIndent = m.group(1)!!
                 }
             }
         }

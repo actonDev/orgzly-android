@@ -1,5 +1,7 @@
 package com.orgzly.android.espresso;
 
+import androidx.test.rule.ActivityTestRule;
+
 import com.orgzly.R;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.prefs.AppPreferences;
@@ -8,8 +10,6 @@ import com.orgzly.android.ui.main.MainActivity;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-
-import androidx.test.rule.ActivityTestRule;
 
 import static androidx.test.espresso.Espresso.onData;
 import static androidx.test.espresso.Espresso.onView;
@@ -29,12 +29,9 @@ import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasToString;
 
-
-//@Ignore
-@SuppressWarnings("unchecked")
 public class SettingsFragmentTest extends OrgzlyTest {
     @Rule
-    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class, true, false);
+    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class);
 
     @Before
     public void setUp() throws Exception {
@@ -51,7 +48,7 @@ public class SettingsFragmentTest extends OrgzlyTest {
         pressBack();
         pressBack();
         onView(withId(R.id.fragment_books_view_flipper)).check(matches(isDisplayed()));
-        onView(allOf(withText("Getting Started with Orgzly"), isDisplayed())).perform(click());
+        onView(allOf(withText(R.string.getting_started_notebook_name), isDisplayed())).perform(click());
         onView(withId(R.id.fragment_book_view_flipper)).check(matches(isDisplayed()));
         onActionItemClick(R.id.activity_action_settings, R.string.settings);
         clickSetting("prefs_screen_app", R.string.app);

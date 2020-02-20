@@ -1,62 +1,62 @@
 package com.orgzly.android.espresso
 
+import android.os.SystemClock
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.longClick
 import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.withId
-import androidx.test.espresso.matcher.ViewMatchers.withText
+import androidx.test.espresso.matcher.ViewMatchers.*
 import com.orgzly.R
 import com.orgzly.android.OrgzlyTest
 import com.orgzly.android.espresso.EspressoUtils.*
 import com.orgzly.android.ui.main.MainActivity
 import com.orgzly.org.datetime.OrgDateTime
+import org.hamcrest.Matchers.not
 import org.hamcrest.Matchers.startsWith
 import org.junit.Rule
 import org.junit.Test
 
 class NoteEventsTest : OrgzlyTest() {
     @get:Rule
-    var activityRule = EspressoActivityTestRule(MainActivity::class.java, true, false)
+    val activityRule = EspressoActivityTestRule(MainActivity::class.java)
 
     private val now: String
             get() = OrgDateTime(true).toString()
 
     private val today: String
         get() = OrgDateTime.Builder()
-                .setDay(System.currentTimeMillis())
+                .setDateTime(System.currentTimeMillis())
                 .setIsActive(true)
                 .build()
                 .toString()
 
     private val tomorrow: String
             get() = OrgDateTime.Builder()
-                    .setDay(System.currentTimeMillis() + 86400000L)
+                    .setDateTime(System.currentTimeMillis() + 1000 * 60 * 60 * 24)
                     .setIsActive(true)
                     .build()
                     .toString()
 
     private val inFewDays: String
         get() = OrgDateTime.Builder()
-                .setDay(System.currentTimeMillis() + 86400000L * 3)
+                .setDateTime(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 3)
                 .setIsActive(true)
                 .build()
                 .toString()
 
     private val yesterday: String
         get() = OrgDateTime.Builder()
-                .setDay(System.currentTimeMillis() - 86400000L)
+                .setDateTime(System.currentTimeMillis() - 1000 * 60 * 60 * 24)
                 .setIsActive(true)
                 .build()
                 .toString()
 
     private val fewDaysAgo: String
         get() = OrgDateTime.Builder()
-                .setDay(System.currentTimeMillis() - 86400000L * 3)
+                .setDateTime(System.currentTimeMillis() - 1000 * 60 * 60 * 24 * 3)
                 .setIsActive(true)
                 .build()
                 .toString()
-
 
     @Test
     fun search_OneInTitle() {
@@ -112,6 +112,82 @@ class NoteEventsTest : OrgzlyTest() {
         activityRule.launchActivity(null)
         searchForText("ad.2")
         onNotesInAgenda().check(matches(recyclerViewItemCount(4)))
+    }
+
+    private fun time(offset: Long = 0, hasTime: Boolean = false): OrgDateTime {
+        return OrgDateTime.Builder()
+                .setDateTime(System.currentTimeMillis() + offset)
+                .setHasTime(hasTime)
+                .setIsActive(true)
+                .build()
+    }
+
+    @Test
+    fun agenda_MultipleWithTimes() {
+        testUtils.setupBook("book-a", """
+            * Note
+            SCHEDULED: ${time(1000 * 60 * 60 * 24 * 2)}
+            DEADLINE: ${time()}
+
+            Now: ${time(hasTime = true)}
+            In one hour: ${time(1000 * 60 * 60, hasTime = true)}
+            Tomorrow: ${time(1000 * 60 * 60 * 24, hasTime = true)}"
+        """.trimIndent())
+
+        activityRule.launchActivity(null)
+
+        searchForText("ad.5")
+
+        SystemClock.sleep(10000)
+
+        onNotesInAgenda().check(matches(recyclerViewItemCount(10)))
+
+        // Today: deadline
+        onItemInAgenda(1, R.id.item_head_scheduled_text).check(matches(not(isDisplayed())))
+        onItemInAgenda(1, R.id.item_head_deadline_text).check(matches(isDisplayed()))
+        onItemInAgenda(1, R.id.item_head_event_text).check(matches(not(isDisplayed())))
+
+        // Today: event
+        onItemInAgenda(2, R.id.item_head_scheduled_text).check(matches(not(isDisplayed())))
+        onItemInAgenda(2, R.id.item_head_deadline_text).check(matches(not(isDisplayed())))
+        onItemInAgenda(2, R.id.item_head_event_text).check(matches(isDisplayed()))
+
+        // Today: event
+        onItemInAgenda(3, R.id.item_head_scheduled_text).check(matches(not(isDisplayed())))
+        onItemInAgenda(3, R.id.item_head_deadline_text).check(matches(not(isDisplayed())))
+        onItemInAgenda(3, R.id.item_head_event_text).check(matches(isDisplayed()))
+
+        // Tomorrow: event
+        onItemInAgenda(5, R.id.item_head_scheduled_text).check(matches(not(isDisplayed())))
+        onItemInAgenda(5, R.id.item_head_deadline_text).check(matches(not(isDisplayed())))
+        onItemInAgenda(5, R.id.item_head_event_text).check(matches(isDisplayed()))
+
+        // In two days: scheduled
+        onItemInAgenda(7, R.id.item_head_scheduled_text).check(matches(isDisplayed()))
+        onItemInAgenda(7, R.id.item_head_deadline_text).check(matches(not(isDisplayed())))
+        onItemInAgenda(7, R.id.item_head_event_text).check(matches(not(isDisplayed())))
+    }
+
+    @Test
+    fun search_MultipleWithTimes() {
+        testUtils.setupBook("book-a", """
+            * Note
+            SCHEDULED: ${time(1000 * 60 * 60 * 24 * 2)}
+            DEADLINE: ${time()}
+
+            Now: ${time(hasTime = true)}
+            In one hour: ${time(1000 * 60 * 60, hasTime = true)}
+            Tomorrow: ${time(1000 * 60 * 60 * 24, hasTime = true)}"
+        """.trimIndent())
+
+        activityRule.launchActivity(null)
+        searchForText("b.book-a")
+
+        onNotesInSearch().check(matches(recyclerViewItemCount(1)))
+
+        onNoteInSearch(0, R.id.item_head_scheduled_text).check(matches(isDisplayed()))
+        onNoteInSearch(0, R.id.item_head_deadline_text).check(matches(isDisplayed()))
+        onNoteInSearch(0, R.id.item_head_event_text).check(matches(isDisplayed()))
     }
 
     @Test

@@ -9,7 +9,7 @@
     <!-- Unlink from Dropbox -->
     <string name="clear">Törlés</string>
     <string name="cancel">Mégse</string>
-    <string name="create">Létrehozás</string>
+    <string name="create">Létrehoz</string>
     <string name="new_">Új</string>
     <!-- "new" is reserved -->
     <string name="select">Kiválasztás</string>
@@ -21,6 +21,7 @@
     <string name="remove_notebook_link">Hivatkozás eltávolítása</string>
     <string name="browse">Tallózás</string>
     <string name="dropbox">Dropbox</string>
+    <string name="view">Nézet</string>
     <string name="edit">Szerkesztés</string>
     <string name="edit_note">Bejegyzés szerkesztése</string>
     <string name="delete">Törlés</string>
@@ -59,11 +60,6 @@
     <string name="widget">Kisalkalmazás</string>
     <string name="history">Előzmények</string>
     <string name="event">Esemény</string>
-    <plurals name="notes_deleted">
-        <item quantity="one">Bejegyzés törölve</item>
-        <item quantity="other"><b>%d</b> bejegyzés törölve</item>
-    </plurals>
-    <string name="no_notes_deleted">Nem töröltem bejegyzést</string>
     <plurals name="notes_cut">
         <item quantity="one">Jegyzet kivágva</item>
         <item quantity="other"><b>%d</b> jegyzet kivágva</item>
@@ -183,15 +179,35 @@
     <string name="git_author_hint">Szerző (pl. Kovács Jenő)</string>
     <string name="git_email_hint">Email (pl. john@email.com)</string>
     <string name="git_branch_hint">Ág (pl. master)</string>
+    <string name="git_auth_https_username_hint">Felhasználónév</string>
+    <string name="git_auth_https_password_hint">Jelszó</string>
+    <string name="git_generate_key_pair">Kulcspár generálása</string>
+    <string name="git_copy_public_key">Nyilvános kulcs másolása</string>
+    <string name="git_auth_type_text">Hitelesítés típusa</string>
+    <string name="git_auth_type_ssh">SSH</string>
+    <string name="git_auth_type_https">HTTPS</string>
+    <!-- Git sync repo errors -->
+    <!-- TODO: I don't think we can say more than this for ssh authentication failures, but we probably want to -->
+    <string name="git_clone_error_ssh_auth">Nem sikerült klónozni, hitelesítési hiba</string>
+    <string name="git_clone_error_invalid_repo">A távoli cím nem git adattár</string>
+    <string name="git_clone_error_unknown">Ismeretlen hiba klónozás közben</string>
+    <string name="git_clone_error_invalid_target_dir">A cél mappa nem létezik</string>
+    <string name="git_clone_error_target_not_empty">A cél mappa nem üres</string>
+    <string name="git_clone_error_uri_not_supported">Nem támogatott távoli cím</string>
+    <string name="webdav_url_hint">URL (pl. webdavs://example.com/my-org-files/)</string>
+    <string name="webdav_auth_username_hint">Felhasználónév</string>
+    <string name="webdav_auth_password_hint">Jelszó</string>
+    <string name="webdav_test_error_auth">Felhasználónév vagy a jelszó hibás</string>
+    <string name="webdav_test_error_unknown">Ismeretlen hiba történt</string>
     <!-- Share button - error messages (set as title). -->
     <string name="share_action_not_set">Megosztási művelet nincs beállítva</string>
     <string name="share_action_not_supported">%s megosztási művelet nem támogatott</string>
     <string name="share_type_not_set">Megosztástípus nincs beállítva</string>
     <string name="share_type_not_supported">%s megosztás típus nem támogatott</string>
     <string name="repositories">Tárolók</string>
+    <string name="repository_not_valid_with_reason">Érvénytelen tároló: %s</string>
     <string name="invalid_repo_url">Érvénytelen tároló URL \"%s\"</string>
     <string name="repository_url_already_exists">Ilyen tároló URL más létezik</string>
-    <string name="message_unsupported_repository_type">Nem támogatott tároló típus</string>
     <string name="fragment_left_drawer_list_view_content_description">Bal fiók</string>
     <string name="drawer_item">Fiók elem</string>
     <string name="prev_state">Előző állapot</string>
@@ -204,6 +220,7 @@
     <string name="note_book_not_set">Jegyzetfüzet nincs beállítva</string>
     <string name="title_can_not_be_empty">Cím nem lehet üres</string>
     <string name="can_not_be_empty">Nem lehet üres</string>
+    <string name="invalid_url">Érvénytelen URL</string>
     <string name="no_notebooks">Nincs jegyzetfüzet</string>
     <string name="no_notes">Nincs bejegyzés a jegyzetfüzetben</string>
     <string name="create_new_repository_for_syncing">Új tároló létrehozása jegyzetfüzet szinkronizáláshoz</string>
@@ -273,7 +290,10 @@
     <string name="prefs_title_notifications">Értesítések</string>
     <string name="app">App</string>
     <string name="no_repos_configured">Nincs beállítva tárolóhely</string>
+    <string name="test_connection">Kapcsolat tesztelése</string>
+    <string name="connecting">Kapcsolódás…</string>
     <string name="no_connection">Nincs kapcsolat</string>
+    <string name="connection_successful">Kapcsolódás sikeres</string>
     <string name="last_sync_with_argument">Utolsó szinkronizálás: %s</string>
     <string name="force_loading_from_uri">Betöltés mindenképp: %s …</string>
     <string name="force_loaded_from_uri">Betöltve: %s</string>
@@ -334,10 +354,20 @@
     <string name="list_density_compact">Tömör</string>
     <string name="notebooks_sort_order_name">Név</string>
     <string name="notebooks_sort_order_modification_time">Módosítás időpontja</string>
+    <plurals name="delete_note_or_notes_with_count_question">
+        <item quantity="one">Delete note?</item>
+        <item quantity="other"><b>%d</b> bejegyzés törlése?</item>
+    </plurals>
+    <!-- Unused -->
     <string name="delete_note">Bejegyzés törlése</string>
-    <string name="delete_note_and_all_subnotes">Törli a bejegyzést és minden aljegyzetet?</string>
     <string name="delete_notes">Bejegyzések törlése</string>
+    <string name="delete_note_and_all_subnotes">Törli a bejegyzést és minden aljegyzetet?</string>
     <string name="delete_notes_and_all_subnotes">Törli a bejegyzéseket és minden aljegyzetet?</string>
+    <plurals name="notes_deleted">
+        <item quantity="one">Bejegyzés törölve</item>
+        <item quantity="other"><b>%d</b> bejegyzés törölve</item>
+    </plurals>
+    <string name="no_notes_deleted">Nem töröltem bejegyzést</string>
     <string name="note_content_finish_editing">Szövegkörnyezet mutatása</string>
     <string name="note_content_start_editing">Tartalom szerkesztése</string>
     <string name="duplicate_keywords_not_allowed">%s kulcsszó már használt</string>
@@ -411,6 +441,10 @@
         <item quantity="one">Tartalmaz <b>%d</b> bejegyzést</item>
         <item quantity="other">Tartalmaz <b>%d</b> bejegyzést</item>
     </plurals>
+    <plurals name="found_number_of_notebooks">
+        <item quantity="one"><b>%d</b> jegyzetfüzetet találtam</item>
+        <item quantity="other"><b>%d</b> jegyzetfüzetet találtam</item>
+    </plurals>
     <string name="content_line_count_displayed">Tartalom sorainak számát mutassa</string>
     <string name="content_line_count_displayed_summary">Tartalom sorainak számát mutassa, ha az el van rejtve</string>
     <string name="style_text_title">Szöveg stílus</string>
@@ -483,13 +517,25 @@
     <string name="notification_default_priority">Alapértelmezett</string>
     <string name="notification_low_priority">Alacsony</string>
     <string name="notification_minimum_priority">Minimális</string>
-    <string name="breadcrumbs_target">Breadcrumbs target</string>
-    <string name="link_target">Link target</string>
-    <string name="note_details">Note details</string>
-    <string name="notebook_and_scroll_to_note">Notebook (scroll to note)</string>
-    <string name="notebook_and_focus_on_note">Notebook (focus on note)</string>
+    <string name="breadcrumbs_target">Navigáció célja</string>
+    <string name="link_target">Hivatkozás célja</string>
+    <string name="note_details">Bejegyzés részletei</string>
+    <string name="notebook_and_scroll_to_note">Jegyzetfüzet (lapozás a bejegyzéshez)</string>
+    <string name="notebook_and_focus_on_note">Jegyzetfüzet (bejegyzés kiválasztva)</string>
     <plurals name="refile_notes">
-        <item quantity="one">Refile note</item>
-        <item quantity="other">Refile <b>%d</b> notes</item>
+        <item quantity="one">Bejegyzés újraírása</item>
+        <item quantity="other"><b>%d</b> bejegyzés újraírása</item>
     </plurals>
+    <string name="display_checkmarks">Pipák megjelenítése</string>
+    <string name="display_checkmarks_summary">Készre lehet jelölni egy bejegyzést</string>
+    <string name="last_used">Utoljára használt</string>
+    <string name="note_details_opening_mode">Nyitás módja</string>
+    <string name="cleartext_traffic">Kódolatlan adatforgalom</string>
+    <string name="cleartext_traffic_message">Biztosan ezt az URL-t akarod használni?</string>
+    <string name="credentials_in_url_not_supported">Hitelesítő adatok továbbítása URL-ben nem támogatott</string>
+    <string name="access_token">Hozzáférési token</string>
+    <string name="trusted_certificates">Megbízható tanúsítványok</string>
+    <string name="add_trusted_certificates_optional">Megbízható tanúsítványok hozzáadása (választható)</string>
+    <string name="edit_trusted_certificates">Megbízható tanúsítványok szerkesztése</string>
+    <string name="this_action_cannot_be_undone">Ez a művelet nem vonható vissza.</string>
 </resources>

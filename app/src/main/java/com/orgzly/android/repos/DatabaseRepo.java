@@ -15,18 +15,25 @@ import java.util.List;
  * Used for testing by {@link com.orgzly.android.repos.MockRepo}.
  */
 public class DatabaseRepo implements SyncRepo {
+    private final long repoId;
     private final Uri repoUri;
 
     private DbRepoBookRepository dbRepo;
 
-    public DatabaseRepo(DbRepoBookRepository dbRepo, String url) {
+    public DatabaseRepo(RepoWithProps repoWithProps, DbRepoBookRepository dbRepo) {
+        this.repoId = repoWithProps.getRepo().getId();
+        this.repoUri = Uri.parse(repoWithProps.getRepo().getUrl());
         this.dbRepo = dbRepo;
-        this.repoUri = Uri.parse(url);
     }
 
     @Override
-    public boolean requiresConnection() {
+    public boolean isConnectionRequired() {
         return false;
+    }
+
+    @Override
+    public boolean isAutoSyncSupported() {
+        return true;
     }
 
     @Override
@@ -36,13 +43,13 @@ public class DatabaseRepo implements SyncRepo {
 
     @Override
     public List<VersionedRook> getBooks() {
-        return dbRepo.getBooks(repoUri);
+        return dbRepo.getBooks(repoId, repoUri);
     }
 
     @Override
     public VersionedRook retrieveBook(String fileName, File file) {
         Uri uri = repoUri.buildUpon().appendPath(fileName).build();
-        return dbRepo.retrieveBook(repoUri, uri, file);
+        return dbRepo.retrieveBook(repoId, repoUri, uri, file);
     }
 
     @Override
@@ -54,15 +61,15 @@ public class DatabaseRepo implements SyncRepo {
 
         Uri uri = repoUri.buildUpon().appendPath(fileName).build();
 
-        VersionedRook vrook = new VersionedRook(repoUri, uri, rev, mtime);
+        VersionedRook vrook = new VersionedRook(repoId, RepoType.MOCK, repoUri, uri, rev, mtime);
 
-        return dbRepo.createBook(vrook, content);
+        return dbRepo.createBook(repoId, vrook, content);
     }
 
     @Override
     public VersionedRook renameBook(Uri fromUri, String name) {
         Uri toUri = UriUtils.getUriForNewName(fromUri, name);
-        return dbRepo.renameBook(fromUri, toUri);
+        return dbRepo.renameBook(repoId, fromUri, toUri);
     }
 
     @Override

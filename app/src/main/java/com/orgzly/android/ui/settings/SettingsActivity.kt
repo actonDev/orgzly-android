@@ -69,6 +69,8 @@ class SettingsActivity : CommonActivity(), Listener {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        App.appComponent.inject(this)
+
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_settings)
@@ -85,8 +87,8 @@ class SettingsActivity : CommonActivity(), Listener {
         }
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        return if (item?.itemId == android.R.id.home) {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return if (item.itemId == android.R.id.home) {
             onBackPressed()
             true
         } else {

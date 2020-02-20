@@ -3,6 +3,8 @@ package com.orgzly.android.espresso;
 import android.widget.DatePicker;
 import android.widget.TimePicker;
 
+import androidx.test.rule.ActivityTestRule;
+
 import com.orgzly.R;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.prefs.AppPreferences;
@@ -14,14 +16,11 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import androidx.test.rule.ActivityTestRule;
-
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.longClick;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
-import static androidx.test.espresso.action.ViewActions.swipeLeft;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.contrib.DrawerActions.open;
@@ -47,11 +46,9 @@ import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.startsWith;
 
-//@Ignore
-@SuppressWarnings("unchecked")
 public class QueryFragmentTest extends OrgzlyTest {
     @Rule
-    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class, true, false);
+    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class);
 
     private void defaultSetUp() {
         testUtils.setupBook("book-one",
@@ -721,7 +718,7 @@ public class QueryFragmentTest extends OrgzlyTest {
         activityRule.launchActivity(null);
 
         onView(allOf(withText("notebook"), isDisplayed())).perform(click());
-        onNoteInBook(1, R.id.item_head_fold_button).perform(click());
+        onNoteInBook(1, R.id.item_head_fold_button_text).perform(click());
         searchForText("note");
         onView(withId(R.id.fragment_query_search_view_flipper)).check(matches(isDisplayed()));
         onNotesInSearch().check(matches(recyclerViewItemCount(3)));
@@ -756,7 +753,7 @@ public class QueryFragmentTest extends OrgzlyTest {
         onView(withText(R.string.no_notes_found_after_search)).check(matches(isDisplayed()));
     }
 
-    @Ignore // TODO: Implement
+    @Ignore("Not implemented yet")
     @Test
     public void testPreselectedStateOfSelectedNote() {
         testUtils.setupBook("notebook", "* TODO Note A\n* TODO Note B");
@@ -769,16 +766,6 @@ public class QueryFragmentTest extends OrgzlyTest {
         onView(withId(R.id.bottom_action_bar_state)).perform(click());
 
         onView(withText("TODO")).check(matches(isChecked()));
-    }
-
-    @Ignore
-    @Test
-    public void testOpensBookFromSearchBySwiping() {
-        testUtils.setupBook("notebook", "* TODO Note A\n* TODO Note B");
-        activityRule.launchActivity(null);
-        searchForText("i.todo");
-        onNoteInSearch(1).perform(swipeLeft());
-        onView(withId(R.id.fragment_book_view_flipper)).check(matches(isDisplayed()));
     }
 
     @Test

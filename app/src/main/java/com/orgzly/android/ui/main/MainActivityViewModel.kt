@@ -7,15 +7,13 @@ import com.orgzly.BuildConfig
 import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.db.dao.NoteDao
-import com.orgzly.android.db.entity.Book
-import com.orgzly.android.db.entity.BookView
-import com.orgzly.android.db.entity.Note
-import com.orgzly.android.db.entity.SavedSearch
+import com.orgzly.android.db.entity.*
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.ui.CommonViewModel
 import com.orgzly.android.ui.SingleLiveEvent
 import com.orgzly.android.usecase.*
 import com.orgzly.android.util.LogUtils
+import java.lang.IllegalStateException
 
 class MainActivityViewModel(private val dataRepository: DataRepository) : CommonViewModel() {
     private val booksParams = MutableLiveData<String>()
@@ -32,7 +30,11 @@ class MainActivityViewModel(private val dataRepository: DataRepository) : Common
 
     val openNoteRequestEvent: SingleLiveEvent<Note> = SingleLiveEvent()
 
-    data class BookLinkOptions(val book: Book, val links: List<CharSequence>, val selected: Int)
+    data class BookLinkOptions(
+            val book: Book,
+            val links: List<Repo>,
+            val urls: Array<CharSequence>,
+            val selected: Int)
 
     val setBookLinkRequestEvent: SingleLiveEvent<BookLinkOptions> = SingleLiveEvent()
 
@@ -103,28 +105,29 @@ class MainActivityViewModel(private val dataRepository: DataRepository) : Common
             val bookView = dataRepository.getBookView(bookId)
 
             if (bookView == null) {
-                errorEvent.postValue(Exception("no book"))
-            } else {
-                val repos = dataRepository.getReposList()
+                errorEvent.postValue(IllegalStateException("Book not found"))
 
-                val a = if (repos.isEmpty()) {
-                    BookLinkOptions(bookView.book, emptyList(), -1)
+            } else {
+                val repos = dataRepository.getRepos()
+
+                val options = if (repos.isEmpty()) {
+                    BookLinkOptions(bookView.book, emptyList(), emptyArray(), -1)
 
                 } else {
-                    val currentLink = bookView.linkedTo
+                    val currentLink = bookView.linkRepo
 
-                    var selectedLink = -1
-                    val links = repos.mapIndexed { index, repo ->
-                        if (repo.url == currentLink) {
-                            selectedLink = index
-                        }
-                        repo.url
+                    val selectedLink = repos.indexOfFirst {
+                        it.url == currentLink?.url
                     }
 
-                    BookLinkOptions(bookView.book, links, selectedLink)
+                    BookLinkOptions(
+                            bookView.book,
+                            repos,
+                            repos.map { it.url }.toTypedArray(),
+                            selectedLink)
                 }
 
-                setBookLinkRequestEvent.postValue(a)
+                setBookLinkRequestEvent.postValue(options)
             }
         }
     }

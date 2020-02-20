@@ -8,18 +8,11 @@ class NotePaste(val bookId: Long, val noteId: Long, val place: Place) : UseCase(
     override fun run(dataRepository: DataRepository): UseCaseResult {
         val clipboard = NotesClipboard.load()
 
-        val count = if (clipboard != null) {
-            dataRepository.pasteNotes(clipboard, noteId, place)
-        } else {
-            0
-        }
+        val count = dataRepository.pasteNotes(clipboard, bookId, noteId, place)
 
         return UseCaseResult(
                 modifiesLocalData = count > 0,
-                triggersSync = if (count > 0)
-                    UseCase.SYNC_DATA_MODIFIED
-                else
-                    UseCase.SYNC_NOT_REQUIRED,
+                triggersSync = if (count > 0) SYNC_DATA_MODIFIED else SYNC_NOT_REQUIRED,
                 userData = count)
     }
 }

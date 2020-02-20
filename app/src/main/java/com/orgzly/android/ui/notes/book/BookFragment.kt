@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.orgzly.BuildConfig
 import com.orgzly.R
 import com.orgzly.android.BookUtils
+import com.orgzly.android.db.NotesClipboard
 import com.orgzly.android.db.entity.Book
 import com.orgzly.android.db.entity.NoteView
 import com.orgzly.android.prefs.AppPreferences
@@ -29,6 +30,8 @@ import com.orgzly.android.ui.notes.quickbar.QuickBarListener
 import com.orgzly.android.ui.notes.quickbar.QuickBars
 import com.orgzly.android.ui.refile.RefileFragment
 import com.orgzly.android.ui.util.ActivityUtils
+import com.orgzly.android.ui.util.setup
+import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.util.LogUtils
 import com.orgzly.databinding.FragmentNotesBookBinding
 
@@ -59,8 +62,8 @@ class BookFragment :
 
     private lateinit var viewModel: BookViewModel
 
-    override fun getAdapter(): BookAdapter {
-        return viewAdapter
+    override fun getAdapter(): BookAdapter? {
+        return if (::viewAdapter.isInitialized) viewAdapter else null
     }
 
     override fun getCurrentListener(): NotesFragment.Listener? {
@@ -83,20 +86,21 @@ class BookFragment :
 
 
     override fun onAttach(context: Context) {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, context)
         super.onAttach(context)
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, context)
 
         listener = activity as Listener
         actionModeListener = activity as ActionModeListener
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
         super.onCreate(savedInstanceState)
 
-        sharedMainActivityViewModel = activity?.let {
-            ViewModelProviders.of(it).get(SharedMainActivityViewModel::class.java)
-        } ?: throw IllegalStateException("No Activity")
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
+
+        sharedMainActivityViewModel = ViewModelProviders.of(requireActivity())
+                .get(SharedMainActivityViewModel::class.java)
 
         /* Would like to add items to the Options Menu.
          * Required (for fragments only) to receive onCreateOptionsMenu() call.
@@ -114,20 +118,21 @@ class BookFragment :
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
 
         binding = FragmentNotesBookBinding.inflate(inflater, container, false)
-
-        setupRecyclerView()
 
         return binding.root
     }
 
-    private fun setupRecyclerView() {
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val quickBars = QuickBars(binding.root.context, true)
 
         viewAdapter = BookAdapter(binding.root.context, this, quickBars, inBook = true)
         viewAdapter.setHasStableIds(true)
+
+        // Restores selection, requires adapter
+        super.onViewCreated(view, savedInstanceState)
 
         layoutManager = LinearLayoutManager(context)
 
@@ -162,6 +167,8 @@ class BookFragment :
 //
 //            itemTouchHelper.attachToRecyclerView(rv)
         }
+
+        binding.swipeContainer.setup()
     }
 
     override fun onQuickBarButtonClick(buttonId: Int, itemId: Long) {
@@ -169,8 +176,9 @@ class BookFragment :
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
         super.onActivityCreated(savedInstanceState)
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
 
         viewModel.viewState.observe(viewLifecycleOwner, Observer { state ->
             if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Observed load state: $state")
@@ -228,7 +236,23 @@ class BookFragment :
 
         viewModel.refileRequestEvent.observeSingle(viewLifecycleOwner, Observer {
             RefileFragment.getInstance(it.selected, it.count)
-                    .show(fragmentManager, RefileFragment.FRAGMENT_TAG)
+                    .show(requireFragmentManager(), RefileFragment.FRAGMENT_TAG)
+        })
+
+        viewModel.notesDeleteRequest.observeSingle(viewLifecycleOwner, Observer { pair ->
+            val ids = pair.first
+            val count = pair.second
+
+            val question = resources.getQuantityString(
+                    R.plurals.delete_note_or_notes_with_count_question, count, count)
+
+            dialog = AlertDialog.Builder(context)
+                    .setTitle(question)
+                    .setPositiveButton(R.string.delete) { _, _ ->
+                        listener?.onNotesDeleteRequest(mBookId, ids)
+                    }
+                    .setNegativeButton(R.string.cancel) { _, _ -> }
+                    .show()
         })
     }
 
@@ -250,27 +274,29 @@ class BookFragment :
     }
 
     override fun onDestroyView() {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
         super.onDestroyView()
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
     }
 
     override fun onDetach() {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
         super.onDetach()
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
         listener = null
     }
 
     private fun parseArguments() {
         arguments?.let {
-            if (!it.containsKey(ARG_BOOK_ID)) {
-                throw IllegalArgumentException("No book id passed")
+            require(it.containsKey(ARG_BOOK_ID)) {
+                "No book id passed"
             }
 
             mBookId = it.getLong(ARG_BOOK_ID)
 
-            if (mBookId <= 0) {
-                throw IllegalArgumentException("Passed book id $mBookId is not valid")
+            require(mBookId > 0) {
+                "Passed book id $mBookId is not valid"
             }
         } ?: throw IllegalArgumentException("No arguments passed")
     }
@@ -302,6 +328,19 @@ class BookFragment :
         if (currentBook == null) {
             menu.removeItem(R.id.books_options_menu_book_preface)
         }
+
+        // Hide paste button if clipboard is empty, update title if not
+        NotesClipboard.count().let { count ->
+            if (count == 0) {
+                menu.removeItem(R.id.book_actions_paste)
+
+            } else {
+                val title = resources.getQuantityString(
+                        R.plurals.paste_note_or_notes_with_count, count, count)
+
+                menu.findItem(R.id.book_actions_paste).setTitle(title)
+            }
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -310,6 +349,11 @@ class BookFragment :
         when (item.itemId) {
             R.id.books_options_menu_item_cycle_visibility -> {
                 viewModel.cycleVisibility()
+                return true
+            }
+
+            R.id.book_actions_paste -> {
+                pasteNotes(Place.UNDER, 0)
                 return true
             }
 
@@ -400,9 +444,9 @@ class BookFragment :
 
     @SuppressLint("ClickableViewAccessibility")
     private fun highlightScrolledToView(view: View) {
-        val arr = view.context.obtainStyledAttributes(R.styleable.ColorScheme)
-        val selectionBgColor = arr.getColor(R.styleable.ColorScheme_item_spotlighted_bg_color, 0)
-        arr.recycle()
+        val selectionBgColor = view.context.styledAttributes(R.styleable.ColorScheme) { typedArray ->
+            typedArray.getColor(R.styleable.ColorScheme_item_spotlighted_bg_color, 0)
+        }
 
         view.setBackgroundColor(selectionBgColor)
 
@@ -433,14 +477,7 @@ class BookFragment :
     }
 
     private fun delete(ids: Set<Long>) {
-        dialog = AlertDialog.Builder(context)
-                .setTitle(R.string.delete_notes)
-                .setMessage(R.string.delete_notes_and_all_subnotes)
-                .setPositiveButton(R.string.delete) { _, _ ->
-                    listener?.onNotesDeleteRequest(mBookId, ids)
-                }
-                .setNegativeButton(R.string.cancel) { _, _ -> }
-                .show()
+        viewModel.requestNotesDelete(ids)
     }
 
     override fun getCurrentDrawerItemId(): String {

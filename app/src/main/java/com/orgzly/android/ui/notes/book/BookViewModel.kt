@@ -33,7 +33,7 @@ class BookViewModel(private val dataRepository: DataRepository, val bookId: Long
 
     data class Data(val book: Book?, val notes: List<NoteView>?)
 
-    val data = Transformations.switchMap(params) { params ->
+    val data = Transformations.switchMap(params) { _ ->
         MediatorLiveData<Data>().apply {
             addSource(dataRepository.getBookLiveData(bookId)) {
                 value = Data(it, value?.notes)
@@ -62,6 +62,16 @@ class BookViewModel(private val dataRepository: DataRepository, val bookId: Long
         App.EXECUTORS.diskIO().execute {
             val count = dataRepository.getNotesAndSubtreesCount(ids)
             refileRequestEvent.postValue(NotesToRefile(ids, count))
+        }
+    }
+
+
+    val notesDeleteRequest: SingleLiveEvent<Pair<Set<Long>, Int>> = SingleLiveEvent()
+
+    fun requestNotesDelete(ids: Set<Long>) {
+        App.EXECUTORS.diskIO().execute {
+            val count = dataRepository.getNotesAndSubtreesCount(ids)
+            notesDeleteRequest.postValue(Pair(ids, count))
         }
     }
 }

@@ -2,6 +2,9 @@ package com.orgzly.android.espresso;
 
 import android.widget.DatePicker;
 
+import androidx.test.espresso.contrib.RecyclerViewActions;
+import androidx.test.rule.ActivityTestRule;
+
 import com.orgzly.R;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.prefs.AppPreferences;
@@ -12,15 +15,11 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
-import androidx.test.espresso.contrib.RecyclerViewActions;
-import androidx.test.rule.ActivityTestRule;
-
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.longClick;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
-import static androidx.test.espresso.action.ViewActions.swipeLeft;
 import static androidx.test.espresso.action.ViewActions.swipeUp;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
@@ -46,10 +45,9 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.startsWith;
 
-//@Ignore
 public class BookTest extends OrgzlyTest {
     @Rule
-    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class, true, false);
+    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class);
 
     @Before
     public void setUp() throws Exception {
@@ -127,13 +125,6 @@ public class BookTest extends OrgzlyTest {
         onView(withId(R.id.fragment_note_view_flipper)).check(matches(isDisplayed()));
     }
 
-    @Ignore
-    @Test
-    public void testOpensNoteFromBookBySwiping() {
-        onNoteInBook(2).perform(swipeLeft());
-        onView(withId(R.id.fragment_note_view_flipper)).check(matches(isDisplayed()));
-    }
-
     @Test
     public void testScheduledNoteTimeStaysTheSameAfterSetting() {
         onNoteInBook(9, R.id.item_head_scheduled_text).check(matches(allOf(withText(userDateTime("<2014-05-26 Mon>")), isDisplayed())));
@@ -147,8 +138,8 @@ public class BookTest extends OrgzlyTest {
 
     @Test
     public void testRemovingScheduledTimeFromMultipleNotes() {
-        onNoteInBook(8, R.id.item_head_scheduled).check(matches(not(isDisplayed())));
-        onNoteInBook(9, R.id.item_head_scheduled).check(matches(isDisplayed()));
+        onNoteInBook(8, R.id.item_head_scheduled_text).check(matches(not(isDisplayed())));
+        onNoteInBook(9, R.id.item_head_scheduled_text).check(matches(isDisplayed()));
 
         onNoteInBook(8).perform(longClick());
         onNoteInBook(9).perform(click());
@@ -156,8 +147,8 @@ public class BookTest extends OrgzlyTest {
         onView(withId(R.id.bottom_action_bar_schedule)).perform(click());
         onView(withText(R.string.clear)).perform(click());
 
-        onNoteInBook(8, R.id.item_head_scheduled).check(matches(not(isDisplayed())));
-        onNoteInBook(9, R.id.item_head_scheduled).check(matches(not(isDisplayed())));
+        onNoteInBook(8, R.id.item_head_scheduled_text).check(matches(not(isDisplayed())));
+        onNoteInBook(9, R.id.item_head_scheduled_text).check(matches(not(isDisplayed())));
     }
 
     @Test
@@ -361,7 +352,7 @@ public class BookTest extends OrgzlyTest {
 
     @Test
     public void testFoldNotes() {
-        onNoteInBook(2, R.id.item_head_fold_button).perform(click());
+        onNoteInBook(2, R.id.item_head_fold_button_text).perform(click());
 
         onNoteInBook(1, R.id.item_head_title).check(matches(withText(endsWith("Note #1."))));
         onNoteInBook(2, R.id.item_head_title).check(matches(withText(endsWith("Note #2."))));
@@ -371,7 +362,7 @@ public class BookTest extends OrgzlyTest {
     @Test
     public void testCreateNewNoteUnderFolded() {
         /* Fold. */
-        onNoteInBook(2, R.id.item_head_fold_button).perform(click());
+        onNoteInBook(2, R.id.item_head_fold_button_text).perform(click());
 
         /* Create new note under folded. */
         onNoteInBook(2).perform(longClick());
@@ -479,7 +470,7 @@ public class BookTest extends OrgzlyTest {
         onNoteInBook(5, R.id.item_head_title).check(matches(withText(startsWith("DONE"))));
     }
 
-    @Ignore // TODO: Implement
+    @Ignore("Not implemented yet")
     @Test
     public void testPreselectedStateOfSelectedNote() {
         onNoteInBook(3).perform(longClick());

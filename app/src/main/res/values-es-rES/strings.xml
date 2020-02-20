@@ -21,6 +21,7 @@
     <string name="remove_notebook_link">Eliminar enlace</string>
     <string name="browse">Navegar</string>
     <string name="dropbox">Dropbox</string>
+    <string name="view">Ver</string>
     <string name="edit">Editar</string>
     <string name="edit_note">Editar nota</string>
     <string name="delete">Borrar</string>
@@ -59,11 +60,6 @@
     <string name="widget">Control</string>
     <string name="history">Historia</string>
     <string name="event">Evento</string>
-    <plurals name="notes_deleted">
-        <item quantity="one">Nota eliminada</item>
-        <item quantity="other">Notas <b>%d</b> eliminadas</item>
-    </plurals>
-    <string name="no_notes_deleted">No hay notas eliminadas</string>
     <plurals name="notes_cut">
         <item quantity="one">Corte de nota</item>
         <item quantity="other">Notas <b>%d</b> cortadas</item>
@@ -183,15 +179,35 @@
     <string name="git_author_hint">Autor (por ejemplo, Juan Pérez)</string>
     <string name="git_email_hint">Correo electrónico (por ejemplo, juan@email.com)</string>
     <string name="git_branch_hint">Rama (por ejemplo, master)</string>
+    <string name="git_auth_https_username_hint">Usuario</string>
+    <string name="git_auth_https_password_hint">Contraseña</string>
+    <string name="git_generate_key_pair">Generar par de claves</string>
+    <string name="git_copy_public_key">Copiar clave pública</string>
+    <string name="git_auth_type_text">Tipo de autenticación</string>
+    <string name="git_auth_type_ssh">SSH</string>
+    <string name="git_auth_type_https">HTTPS</string>
+    <!-- Git sync repo errors -->
+    <!-- TODO: I don't think we can say more than this for ssh authentication failures, but we probably want to -->
+    <string name="git_clone_error_ssh_auth">Fallo al clonar, error de autenticación</string>
+    <string name="git_clone_error_invalid_repo">La dirección remota no es un repositorio git</string>
+    <string name="git_clone_error_unknown">Error desconocido mientras se clona</string>
+    <string name="git_clone_error_invalid_target_dir">El directorio de destino no existe</string>
+    <string name="git_clone_error_target_not_empty">El directorio de destino no está vacío</string>
+    <string name="git_clone_error_uri_not_supported">La dirección remota no es soportada</string>
+    <string name="webdav_url_hint">URL (ej. webdavs://example.com/my-org-files/)</string>
+    <string name="webdav_auth_username_hint">Usuario</string>
+    <string name="webdav_auth_password_hint">Contraseña</string>
+    <string name="webdav_test_error_auth">Usuario o contraseña es inválida</string>
+    <string name="webdav_test_error_unknown">Se ha producido un error desconocido</string>
     <!-- Share button - error messages (set as title). -->
     <string name="share_action_not_set">Compartir acción no definida</string>
     <string name="share_action_not_supported">Acción de compartir %s no es permitida</string>
     <string name="share_type_not_set">Compartir tipo no definido</string>
     <string name="share_type_not_supported">No se admite la participación tipo %s</string>
     <string name="repositories">Repositorios</string>
+    <string name="repository_not_valid_with_reason">Repositorio inválido: %s</string>
     <string name="invalid_repo_url">URL del repositorio no válido \"%s\"</string>
     <string name="repository_url_already_exists">Repositorio con esta URL ya existe</string>
-    <string name="message_unsupported_repository_type">Tipo de repositorio no permitido</string>
     <string name="fragment_left_drawer_list_view_content_description">Cajón izquierdo</string>
     <string name="drawer_item">Artículo de cajón</string>
     <string name="prev_state">Estado anterior</string>
@@ -204,6 +220,7 @@
     <string name="note_book_not_set">Nota no establecida</string>
     <string name="title_can_not_be_empty">El título no puede estar vacío</string>
     <string name="can_not_be_empty">No puede estar en blanco</string>
+    <string name="invalid_url">URL no válida</string>
     <string name="no_notebooks">No tienes notas</string>
     <string name="no_notes">El bloc no tiene notas</string>
     <string name="create_new_repository_for_syncing">Crear nuevo repositorio para sincronizar sus blocs de notas</string>
@@ -273,7 +290,10 @@
     <string name="prefs_title_notifications">Notificaciones</string>
     <string name="app">Aplicación</string>
     <string name="no_repos_configured">No hay repositorios configurados</string>
+    <string name="test_connection">Probar conexión</string>
+    <string name="connecting">Conectando…</string>
     <string name="no_connection">Sin conexión</string>
+    <string name="connection_successful">Conectado con éxito</string>
     <string name="last_sync_with_argument">Última sincronización: %s</string>
     <string name="force_loading_from_uri">Carga-forzada para %s …</string>
     <string name="force_loaded_from_uri">Carga-forzada para %s</string>
@@ -334,10 +354,20 @@
     <string name="list_density_compact">Compacto</string>
     <string name="notebooks_sort_order_name">Nombre</string>
     <string name="notebooks_sort_order_modification_time">Hora de modificación</string>
+    <plurals name="delete_note_or_notes_with_count_question">
+        <item quantity="one">¿Eliminar nota?</item>
+        <item quantity="other">¿Eliminar <b>%d</b> notas?</item>
+    </plurals>
+    <!-- Unused -->
     <string name="delete_note">Eliminar nota</string>
-    <string name="delete_note_and_all_subnotes">¿Desea eliminar esta nota y todos sus sub notas?</string>
     <string name="delete_notes">Eliminar notas</string>
+    <string name="delete_note_and_all_subnotes">¿Desea eliminar esta nota y todos sus sub notas?</string>
     <string name="delete_notes_and_all_subnotes">¿Desea eliminar esta nota y todos sus sub notas?</string>
+    <plurals name="notes_deleted">
+        <item quantity="one">Nota eliminada</item>
+        <item quantity="other">Notas <b>%d</b> eliminadas</item>
+    </plurals>
+    <string name="no_notes_deleted">No hay notas eliminadas</string>
     <string name="note_content_finish_editing">Ver contenido</string>
     <string name="note_content_start_editing">Editar contenido</string>
     <string name="duplicate_keywords_not_allowed">Palabra clave %s usada</string>
@@ -410,6 +440,10 @@
     <plurals name="notes_count_nonzero">
         <item quantity="one">Contiene <b>%d</b> notas</item>
         <item quantity="other">Contiene <b>%d</b> notas</item>
+    </plurals>
+    <plurals name="found_number_of_notebooks">
+        <item quantity="one">Encontrado <b>%d</b> bloc de notas</item>
+        <item quantity="other">Encontrados <b>%d</b> blocs de notas</item>
     </plurals>
     <string name="content_line_count_displayed">Mostrar contenido de contador de linea</string>
     <string name="content_line_count_displayed_summary">Mostrar la cuenta de línea cuando no se muestre el contenido</string>
@@ -490,6 +524,18 @@
     <string name="notebook_and_focus_on_note">Bloc de notas (foco en la nota)</string>
     <plurals name="refile_notes">
         <item quantity="one">Reubicar nota</item>
-        <item quantity="other">Refile <b>%d</b> notes</item>
+        <item quantity="other">Reubicar <b>%d</b> notas</item>
     </plurals>
+    <string name="display_checkmarks">Mostrar marcas</string>
+    <string name="display_checkmarks_summary">Permite marcar notas como hechas</string>
+    <string name="last_used">Último usado</string>
+    <string name="note_details_opening_mode">Modo de apertura</string>
+    <string name="cleartext_traffic">Tráfico de Cleartext</string>
+    <string name="cleartext_traffic_message">¿Seguro que quieres utilizar esta URL?</string>
+    <string name="credentials_in_url_not_supported">El paso de credenciales en la URL no está soportado</string>
+    <string name="access_token">Token de Acceso</string>
+    <string name="trusted_certificates">Certificados de confianza</string>
+    <string name="add_trusted_certificates_optional">Añadir certificados de confianza (opcional)</string>
+    <string name="edit_trusted_certificates">Editar certificados de confianza</string>
+    <string name="this_action_cannot_be_undone">Esta acción no se puede deshacer.</string>
 </resources>

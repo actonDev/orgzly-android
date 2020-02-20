@@ -1,9 +1,17 @@
 package com.orgzly.android.espresso;
 
-import android.os.Environment;
+import android.app.Activity;
+import android.app.Instrumentation.ActivityResult;
+import android.content.Intent;
+import android.os.Build;
+
+import androidx.documentfile.provider.DocumentFile;
+import androidx.test.espresso.intent.Intents;
 import androidx.test.rule.ActivityTestRule;
 
 import com.orgzly.R;
+import com.orgzly.android.BookFormat;
+import com.orgzly.android.LocalStorage;
 import com.orgzly.android.OrgzlyTest;
 import com.orgzly.android.ui.main.MainActivity;
 
@@ -11,6 +19,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 
 import static androidx.test.espresso.Espresso.onView;
@@ -20,13 +29,17 @@ import static androidx.test.espresso.action.ViewActions.longClick;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.contrib.DrawerActions.open;
+import static androidx.test.espresso.intent.Intents.intended;
+import static androidx.test.espresso.intent.Intents.intending;
+import static androidx.test.espresso.intent.matcher.IntentMatchers.hasAction;
+import static androidx.test.espresso.intent.matcher.IntentMatchers.hasExtra;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isEnabled;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static com.orgzly.android.espresso.EspressoUtils.onActionItemClick;
-import static com.orgzly.android.espresso.EspressoUtils.onNoteInBook;
 import static com.orgzly.android.espresso.EspressoUtils.onBook;
+import static com.orgzly.android.espresso.EspressoUtils.onNoteInBook;
 import static com.orgzly.android.espresso.EspressoUtils.onSnackbar;
 import static com.orgzly.android.espresso.EspressoUtils.openContextualToolbarOverflowMenu;
 import static com.orgzly.android.espresso.EspressoUtils.replaceTextCloseKeyboard;
@@ -35,10 +48,9 @@ import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.startsWith;
 
-//@Ignore
 public class BooksTest extends OrgzlyTest {
     @Rule
-    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class, true, false);
+    public ActivityTestRule activityRule = new EspressoActivityTestRule<>(MainActivity.class);
 
     @Before
     public void setUp() throws Exception {
@@ -123,21 +135,50 @@ public class BooksTest extends OrgzlyTest {
     }
 
     @Test
-    public void testExport() {
+    public void testExport() throws IOException {
+//        if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//            testExportQ();
+//        } else {
+            testExportPreQ();
+//        }
+    }
+
+    private void testExportQ() {
+        activityRule.launchActivity(null);
+        onBook(0).perform(longClick());
+        openContextualToolbarOverflowMenu();
+
+        Intents.init();
+
+        // Response to get after app sends Intent.ACTION_CREATE_DOCUMENT
+        Intent resultData = new Intent();
+        File file = new File(context.getCacheDir(), "book-1.org");
+        resultData.setData(DocumentFile.fromFile(file).getUri());
+        ActivityResult result = new ActivityResult(Activity.RESULT_OK, resultData);
+        intending(hasAction(Intent.ACTION_CREATE_DOCUMENT)).respondWith(result);
+
+        // Perform export
+        onView(withText(R.string.export)).perform(click());
+
+        // Check that app has sent intent
+        intended(allOf(hasAction(Intent.ACTION_CREATE_DOCUMENT), hasExtra(Intent.EXTRA_TITLE, "book-1.org")));
+
+        // Check that file was exported.
+        onSnackbar().check(matches(withText(startsWith(context.getString(R.string.book_exported, "")))));
+
+        // Delete exported file
+        file.delete();
+
+        Intents.release();
+    }
+
+    private void testExportPreQ() throws IOException {
         activityRule.launchActivity(null);
         onBook(0).perform(longClick());
         openContextualToolbarOverflowMenu();
         onView(withText(R.string.export)).perform(click());
-
-        /*
-         * Depending on whether external storage is available or not,
-         * export should either succeed or fail.
-         */
-        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
-            onSnackbar().check(matches(withText(startsWith(context.getString(R.string.book_exported, "")))));
-        } else {
-            onSnackbar().check(matches(withText(startsWith(context.getString(R.string.failed_exporting_book, "")))));
-        }
+        onSnackbar().check(matches(withText(startsWith(context.getString(R.string.book_exported, "")))));
+        localStorage.getExportFile("book-1", BookFormat.ORG).delete();
     }
 
     @Test
@@ -212,7 +253,8 @@ public class BooksTest extends OrgzlyTest {
         onView(withId(R.id.dialog_input)).perform(replaceTextCloseKeyboard("new-book"));
         onView(withText(R.string.create)).perform(click());
 
-        onSnackbar().check(matches(withText("Notebook new-book already exists")));
+        onSnackbar().check(matches(
+                withText(context.getString(R.string.book_name_already_exists, "new-book"))));
     }
 
     @Test
@@ -233,7 +275,7 @@ public class BooksTest extends OrgzlyTest {
         onView(withId(R.id.name)).perform(replaceTextCloseKeyboard("book-2"));
         onView(withText(R.string.rename)).perform(click());
         onBook(0, R.id.item_book_last_action)
-                .check(matches(withText(endsWith("Notebook book-2 already exists"))));
+                .check(matches(withText(endsWith(context.getString(R.string.book_name_already_exists, "book-2")))));
     }
 
     @Test

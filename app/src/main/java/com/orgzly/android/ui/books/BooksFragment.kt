@@ -10,18 +10,18 @@ import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.Log
 import android.view.*
-import android.widget.CheckBox
-import android.widget.EditText
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.view.ActionMode
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.google.android.material.textfield.TextInputLayout
 import com.orgzly.BuildConfig
 import com.orgzly.R
+import com.orgzly.android.App
+import com.orgzly.android.BookFormat
 import com.orgzly.android.data.DataRepository
+import com.orgzly.android.db.entity.Book
 import com.orgzly.android.db.entity.BookView
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.ui.CommonActivity
@@ -30,24 +30,21 @@ import com.orgzly.android.ui.OnViewHolderClickListener
 import com.orgzly.android.ui.drawer.DrawerItem
 import com.orgzly.android.ui.main.SharedMainActivityViewModel
 import com.orgzly.android.ui.util.ActivityUtils
+import com.orgzly.android.ui.util.setup
+import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.usecase.BookDelete
 import com.orgzly.android.util.LogUtils
 import com.orgzly.android.util.MiscUtils
 import com.orgzly.databinding.DialogBookDeleteBinding
 import com.orgzly.databinding.DialogBookRenameBinding
 import com.orgzly.databinding.FragmentBooksBinding
-import dagger.android.support.DaggerFragment
 import javax.inject.Inject
 
 /**
  * Displays all notebooks.
  * Allows creating new, deleting, renaming, setting links etc.
  */
-class BooksFragment :
-        DaggerFragment(),
-        Fab,
-        DrawerItem,
-        OnViewHolderClickListener<BookView> {
+class BooksFragment : Fragment(), Fab, DrawerItem, OnViewHolderClickListener<BookView> {
 
     private lateinit var binding: FragmentBooksBinding
 
@@ -73,27 +70,27 @@ class BooksFragment :
     override fun onAttach(context: Context) {
         super.onAttach(context)
 
+        App.appComponent.inject(this)
+
         listener = activity as Listener
 
         parseArguments()
     }
 
     private fun parseArguments() {
-        if (arguments == null) {
-            throw IllegalArgumentException("No arguments found to " + BooksFragment::class.java.simpleName)
-        }
+        requireNotNull(arguments) { "No arguments found to " + BooksFragment::class.java.simpleName }
 
         withOptionsMenu = arguments?.getBoolean(ARG_WITH_OPTIONS_MENU) ?: true
         withActionBar = arguments?.getBoolean(ARG_WITH_ACTION_BAR) ?: true
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(drawerItemId, savedInstanceState)
         super.onCreate(savedInstanceState)
 
-        sharedMainActivityViewModel = activity?.let {
-            ViewModelProviders.of(it).get(SharedMainActivityViewModel::class.java)
-        } ?: throw IllegalStateException("No Activity")
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
+
+        sharedMainActivityViewModel = ViewModelProviders.of(requireActivity())
+                .get(SharedMainActivityViewModel::class.java)
 
         /* Would like to add items to the Options Menu.
          * Required (for fragments only) to receive onCreateOptionsMenu() call.
@@ -102,9 +99,17 @@ class BooksFragment :
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(drawerItemId, inflater, container, savedInstanceState)
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
 
         binding = FragmentBooksBinding.inflate(inflater, container, false)
+
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
 
         viewAdapter = BooksAdapter(this)
         viewAdapter.setHasStableIds(true)
@@ -114,7 +119,7 @@ class BooksFragment :
             it.adapter = viewAdapter
         }
 
-        return binding.root
+        binding.swipeContainer.setup()
     }
 
     override fun onClick(view: View, position: Int, item: BookView) {
@@ -185,7 +190,7 @@ class BooksFragment :
                     }
 
                     R.id.books_context_menu_export -> {
-                        listener?.onBookExportRequest(bookId)
+                        viewModel.exportBookRequest(bookId, BookFormat.ORG)
                     }
 
                     R.id.books_context_menu_delete -> {
@@ -241,17 +246,16 @@ class BooksFragment :
         val dialogBinding = DialogBookDeleteBinding.inflate(LayoutInflater.from(context))
 
         dialogBinding.deleteLinkedCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            activity?.obtainStyledAttributes(
-                    intArrayOf(R.attr.text_primary_color, R.attr.text_disabled_color))?.let {
+            activity?.apply {
+                val color = styledAttributes(R.styleable.ColorScheme) { typedArray ->
+                    val index = if (isChecked) {
+                        R.styleable.ColorScheme_text_primary_color
+                    } else {
+                        R.styleable.ColorScheme_text_disabled_color
+                    }
 
-                val color = if (isChecked) {
-                    it.getColor(0, 0)
-                } else {
-                    it.getColor(1, 0)
+                    typedArray.getColor(index, 0)
                 }
-
-                it.recycle()
-
                 dialogBinding.deleteLinkedUrl.setTextColor(color)
             }
         }
@@ -340,14 +344,10 @@ class BooksFragment :
         dialog = d
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(drawerItemId, view, savedInstanceState)
-        super.onViewCreated(view, savedInstanceState)
-    }
-
     override fun onActivityCreated(savedInstanceState: Bundle?) {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(drawerItemId, savedInstanceState)
         super.onActivityCreated(savedInstanceState)
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
 
         val factory = BooksViewModelFactory.getInstance(dataRepository)
         viewModel = ViewModelProviders.of(this, factory).get(BooksViewModel::class.java)
@@ -383,6 +383,10 @@ class BooksFragment :
             }
         })
 
+        viewModel.bookExportRequestEvent.observeSingle(viewLifecycleOwner, Observer { (book, format) ->
+            listener?.onBookExportRequest(book, format)
+        })
+
         viewModel.bookDeletedEvent.observeSingle(viewLifecycleOwner, Observer {
             CommonActivity.showSnackbar(context, R.string.message_book_deleted)
         })
@@ -399,13 +403,15 @@ class BooksFragment :
     }
 
     override fun onViewStateRestored(savedInstanceState: Bundle?) {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(drawerItemId, savedInstanceState)
         super.onViewStateRestored(savedInstanceState)
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
     }
 
     override fun onResume() {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(drawerItemId)
         super.onResume()
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
         announceChangesToActivity()
 
@@ -414,23 +420,26 @@ class BooksFragment :
     }
 
     override fun onPause() {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
         super.onPause()
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
         actionMode?.finish()
     }
 
     override fun onDestroyView() {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(drawerItemId)
         super.onDestroyView()
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
         dialog?.dismiss()
         dialog = null
     }
 
     override fun onDetach() {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(drawerItemId)
         super.onDetach()
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
         listener = null
     }
@@ -439,7 +448,7 @@ class BooksFragment :
      * Callback for options menu.
      */
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(drawerItemId, menu, inflater)
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, menu, inflater)
 
         inflater.inflate(R.menu.books_actions, menu)
     }
@@ -495,7 +504,7 @@ class BooksFragment :
 
         fun onForceLoadRequest(bookId: Long)
 
-        fun onBookExportRequest(bookId: Long)
+        fun onBookExportRequest(book: Book, format: BookFormat)
 
         fun onBookImportRequest()
     }

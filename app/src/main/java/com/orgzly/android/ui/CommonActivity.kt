@@ -10,6 +10,7 @@ import android.os.Handler
 import android.view.MotionEvent
 import android.view.View
 import androidx.annotation.StringRes
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.FileProvider
 import androidx.core.view.GravityCompat
@@ -24,10 +25,9 @@ import com.orgzly.android.data.DataRepository
 import com.orgzly.android.prefs.AppPreferences
 import com.orgzly.android.sync.AutoSync
 import com.orgzly.android.ui.dialogs.WhatsNewDialog
-import com.orgzly.android.ui.util.ActivityUtils
+import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.util.AppPermissions
 import com.orgzly.android.util.LogUtils
-import dagger.android.support.DaggerAppCompatActivity
 import java.io.File
 import java.util.*
 import javax.inject.Inject
@@ -36,7 +36,7 @@ import javax.inject.Inject
 /**
  * Inherited by every activity in the app.
  */
-abstract class CommonActivity : DaggerAppCompatActivity() {
+abstract class CommonActivity : AppCompatActivity() {
 
     private var snackbar: Snackbar? = null
 
@@ -110,10 +110,9 @@ abstract class CommonActivity : DaggerAppCompatActivity() {
 
     private val snackbarBackgroundColor: Int
         get() {
-            val arr = obtainStyledAttributes(R.styleable.ColorScheme)
-            val color = arr.getColor(R.styleable.ColorScheme_snackbar_bg_color, 0)
-            arr.recycle()
-            return color
+            return styledAttributes(R.styleable.ColorScheme) { typedArray ->
+                typedArray.getColor(R.styleable.ColorScheme_snackbar_bg_color, 0)
+            }
         }
 
     private fun dismissSnackbar() {
@@ -127,9 +126,11 @@ abstract class CommonActivity : DaggerAppCompatActivity() {
         showSnackbar(getString(resId))
     }
 
-    fun showSnackbar(message: String) {
-        findViewById<View>(R.id.main_content)?.let { view ->
-            showSnackbar(Snackbar.make(view, message, Snackbar.LENGTH_LONG))
+    fun showSnackbar(message: String?) {
+        if (message != null) {
+            findViewById<View>(R.id.main_content)?.let { view ->
+                showSnackbar(Snackbar.make(view, message, Snackbar.LENGTH_LONG))
+            }
         }
     }
 
@@ -256,7 +257,7 @@ abstract class CommonActivity : DaggerAppCompatActivity() {
 
         whatsNewDialog = WhatsNewDialog.create(this)
         whatsNewDialog?.let {
-            it.setOnDismissListener { _ -> whatsNewDialog = null }
+            it.setOnDismissListener { whatsNewDialog = null }
             it.show()
         }
     }
@@ -271,26 +272,25 @@ abstract class CommonActivity : DaggerAppCompatActivity() {
     }
 
     private fun setupTheme() {
-        /*
-         * Set theme - color scheme.
-         */
-        val colorScheme = AppPreferences.colorScheme(this)
+        // Set theme (color scheme)
+        when (AppPreferences.colorScheme(this)) {
+            getString(R.string.pref_value_color_scheme_dark) ->
+                setTheme(R.style.AppDarkTheme_Dark)
 
-        when (colorScheme) {
-            getString(R.string.pref_value_color_scheme_dark)  -> setTheme(R.style.AppDarkTheme_Dark)
-            getString(R.string.pref_value_color_scheme_black) -> setTheme(R.style.AppDarkTheme_Black)
-            else -> setTheme(R.style.AppLightTheme_Light)
+            getString(R.string.pref_value_color_scheme_black) ->
+                setTheme(R.style.AppDarkTheme_Black)
+
+            else ->
+                setTheme(R.style.AppLightTheme_Light)
         }
 
-        /*
-         * Apply font style based on preferences.
-         */
-        val fontSizePref = AppPreferences.fontSize(this)
+        // Apply font style based on preferences
+        when (AppPreferences.fontSize(this)) {
+            getString(R.string.pref_value_font_size_large) ->
+                theme.applyStyle(R.style.FontSize_Large, true)
 
-        if (getString(R.string.pref_value_font_size_large) == fontSizePref) {
-            theme.applyStyle(R.style.FontSize_Large, true)
-        } else if (getString(R.string.pref_value_font_size_small) == fontSizePref) {
-            theme.applyStyle(R.style.FontSize_Small, true)
+            getString(R.string.pref_value_font_size_small) ->
+                theme.applyStyle(R.style.FontSize_Small, true)
         }
     }
 
@@ -337,12 +337,6 @@ abstract class CommonActivity : DaggerAppCompatActivity() {
             }
         }
     }
-
-    fun popBackStackAndCloseKeyboard() {
-        supportFragmentManager.popBackStack()
-        ActivityUtils.closeSoftKeyboard(this)
-    }
-
 
     fun progressDialogBuilder(title: Int, message: String? = null): AlertDialog.Builder {
         val view = View.inflate(this, R.layout.dialog_progress_bar, null)
@@ -415,8 +409,8 @@ abstract class CommonActivity : DaggerAppCompatActivity() {
         }
 
         @JvmStatic
-        fun showSnackbar(context: Context?, msg: String) {
-            if (context != null) {
+        fun showSnackbar(context: Context?, msg: String?) {
+            if (context != null && msg != null) {
                 val intent = Intent(AppIntent.ACTION_SHOW_SNACKBAR)
                 intent.putExtra(AppIntent.EXTRA_MESSAGE, msg)
                 LocalBroadcastManager.getInstance(context).sendBroadcast(intent)

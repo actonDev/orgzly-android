@@ -13,11 +13,13 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.ViewModelProviders;
 
 import com.orgzly.BuildConfig;
 import com.orgzly.R;
+import com.orgzly.android.App;
 import com.orgzly.android.data.DataRepository;
 import com.orgzly.android.db.entity.SavedSearch;
 import com.orgzly.android.ui.drawer.DrawerItem;
@@ -31,9 +33,7 @@ import java.util.List;
 
 import javax.inject.Inject;
 
-import dagger.android.support.DaggerFragment;
-
-public class SavedSearchFragment extends DaggerFragment implements DrawerItem {
+public class SavedSearchFragment extends Fragment implements DrawerItem {
     private static final String TAG = SavedSearchFragment.class.getName();
 
     private static final String ARG_ID = "id";
@@ -78,16 +78,11 @@ public class SavedSearchFragment extends DaggerFragment implements DrawerItem {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        FragmentActivity activity = getActivity();
-        if (activity != null) {
-            sharedMainActivityViewModel = ViewModelProviders.of(activity).get(SharedMainActivityViewModel.class);
-        } else {
-            throw new IllegalStateException("No Activity");
-        }
+        sharedMainActivityViewModel = ViewModelProviders.of(requireActivity())
+                .get(SharedMainActivityViewModel.class);
 
         setHasOptionsMenu(true);
     }
-
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -133,8 +128,9 @@ public class SavedSearchFragment extends DaggerFragment implements DrawerItem {
 
     @Override
     public void onResume() {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG);
         super.onResume();
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG);
 
         announceChangesToActivity();
     }
@@ -155,19 +151,22 @@ public class SavedSearchFragment extends DaggerFragment implements DrawerItem {
     public void onAttach(Context context) {
         super.onAttach(context);
 
+        App.appComponent.inject(this);
+
         /* This makes sure that the container activity has implemented
          * the callback interface. If not, it throws an exception
          */
         try {
             mListener = (Listener) getActivity();
         } catch (ClassCastException e) {
-            throw new ClassCastException(getActivity().toString() + " must implement " + Listener.class);
+            throw new ClassCastException(requireActivity().toString() + " must implement " + Listener.class);
         }
     }
 
     @Override
     public void onDetach() {
         super.onDetach();
+
         mListener = null;
     }
 

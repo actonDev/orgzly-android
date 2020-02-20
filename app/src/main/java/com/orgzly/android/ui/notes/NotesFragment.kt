@@ -1,21 +1,24 @@
 package com.orgzly.android.ui.notes
 
 import android.app.AlertDialog
+import android.content.Context
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.view.ActionMode
+import androidx.fragment.app.Fragment
 import com.orgzly.BuildConfig
 import com.orgzly.R
+import com.orgzly.android.App
 import com.orgzly.android.data.DataRepository
 import com.orgzly.android.ui.ActionModeListener
 import com.orgzly.android.ui.NotePlace
 import com.orgzly.android.ui.SelectableItemAdapter
+import com.orgzly.android.ui.TimeType
 import com.orgzly.android.ui.dialogs.NoteStateDialog
 import com.orgzly.android.ui.dialogs.TimestampDialogFragment
 import com.orgzly.android.ui.util.ActivityUtils
 import com.orgzly.android.util.LogUtils
 import com.orgzly.org.datetime.OrgDateTime
-import dagger.android.support.DaggerFragment
 import java.util.*
 import javax.inject.Inject
 
@@ -23,9 +26,7 @@ import javax.inject.Inject
  * Fragment which is displaying a list of notes,
  * such as BookFragment, SearchFragment or AgendaFragment.
  */
-abstract class NotesFragment :
-        DaggerFragment(),
-        TimestampDialogFragment.OnDateTimeSetListener {
+abstract class NotesFragment : Fragment(), TimestampDialogFragment.OnDateTimeSetListener {
 
     @JvmField
     var actionModeListener: ActionModeListener? = null
@@ -35,7 +36,7 @@ abstract class NotesFragment :
 
     abstract fun getCurrentListener(): Listener?
 
-    abstract fun getAdapter(): SelectableItemAdapter
+    abstract fun getAdapter(): SelectableItemAdapter?
 
 
     @JvmField
@@ -43,6 +44,12 @@ abstract class NotesFragment :
 
 
     var fragmentActionMode: ActionMode? = null
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+
+        App.appComponent.inject(this)
+    }
 
     override fun onPause() {
         super.onPause()
@@ -56,22 +63,28 @@ abstract class NotesFragment :
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
-        getAdapter().getSelection().saveIds(outState)
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG)
 
-        /* Save action mode state (move mode). */
-        val actionMode = actionModeListener?.actionMode
-        outState.putBoolean("actionModeMove", actionMode != null && "M" == actionMode.tag)
+        getAdapter()?.let { adapter ->
+            adapter.getSelection().saveIds(outState)
+
+            /* Save action mode state (move mode). */
+            val actionMode = actionModeListener?.actionMode
+            outState.putBoolean("actionModeMove", actionMode != null && "M" == actionMode.tag)
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, savedInstanceState)
 
         /*
          * Restore selected items, now that adapter is set.
          * Saved with {@link Selection#saveSelectedIds(android.os.Bundle, String)}.
          */
         if (savedInstanceState != null) {
-            getAdapter().getSelection().restoreIds(savedInstanceState)
+            getAdapter()?.getSelection()?.restoreIds(savedInstanceState)
         }
     }
 
@@ -97,11 +110,12 @@ abstract class NotesFragment :
             null
         }
 
-        val f = TimestampDialogFragment.getInstance(
-                id,
-                if (id in scheduledTimeButtonIds()) R.string.schedule else R.string.deadline,
-                noteIds,
-                time)
+        val timeType = if (id in scheduledTimeButtonIds())
+            TimeType.SCHEDULED
+        else
+            TimeType.DEADLINE
+
+        val f = TimestampDialogFragment.getInstance(id, timeType, noteIds, time)
 
         f.show(childFragmentManager, TimestampDialogFragment.FRAGMENT_TAG)
     }
@@ -131,11 +145,6 @@ abstract class NotesFragment :
             getCurrentListener()?.onDeadlineTimeUpdateRequest(noteIds, time)
         }
     }
-
-    override fun onDateTimeCleared(id: Int, noteIds: TreeSet<Long>) {
-        onDateTimeSet(id, noteIds, null)
-    }
-
 
     override fun onDateTimeAborted(id: Int, noteIds: TreeSet<Long>) {
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, id)

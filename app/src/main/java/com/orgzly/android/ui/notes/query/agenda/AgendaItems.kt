@@ -3,11 +3,37 @@ package com.orgzly.android.ui.notes.query.agenda
 import com.orgzly.android.db.entity.NoteView
 import com.orgzly.android.query.Query
 import com.orgzly.android.query.user.InternalQueryParser
+import com.orgzly.android.ui.TimeType
 import com.orgzly.android.util.AgendaUtils
+import com.orgzly.org.datetime.OrgInterval
+import com.orgzly.org.datetime.OrgRange
 import org.joda.time.DateTime
 
 object AgendaItems {
-    data class ExpandableOrgRange(val range: String?, val overdueToday: Boolean)
+    data class ExpandableOrgRange(
+            val range: OrgRange,
+            val overdueToday: Boolean,
+            val warningPeriod: OrgInterval?,
+            val delayPeriod: OrgInterval?) {
+
+        companion object {
+            fun fromRange(timeType: TimeType, range: OrgRange): ExpandableOrgRange {
+                val overdueToday = timeType == TimeType.SCHEDULED || timeType == TimeType.DEADLINE
+
+                val warningPeriod = when (timeType) {
+                    TimeType.DEADLINE -> range.startTime.delay
+                    else -> null
+                }
+
+                val delayPeriod = when (timeType) {
+                    TimeType.SCHEDULED -> range.startTime.delay
+                    else -> null
+                }
+
+                return ExpandableOrgRange(range, overdueToday, warningPeriod, delayPeriod)
+            }
+        }
+    }
 
     fun getList(
             notes: List<NoteView>, queryString: String?, idMap: MutableMap<Long, Long>
@@ -40,7 +66,7 @@ object AgendaItems {
 
         item2databaseIds.clear()
 
-        var index = 1L
+        var agendaItemId = 1L
 
         val now = DateTime.now().withTimeAtStartOfDay()
 
@@ -49,37 +75,46 @@ object AgendaItems {
                 .map { i -> now.plusDays(i) }
                 .associateBy(
                         { it.millis },
-                        { mutableListOf<AgendaItem>(AgendaItem.Divider(index++, it)) })
+                        { mutableListOf<AgendaItem>(AgendaItem.Divider(agendaItemId++, it)) })
 
-        val dedup = HashSet<Pair<Long, Long>>()
+        val addedPlanningTimes = HashSet<Long>()
 
         notes.forEach { note ->
 
-            val times = arrayOf(
-                    ExpandableOrgRange(note.scheduledRangeString, overdueToday = true),
-                    ExpandableOrgRange(note.deadlineRangeString, overdueToday = true),
-                    ExpandableOrgRange(note.eventString, overdueToday = false)
-            )
+            fun addInstances(timeType: TimeType, timeString: String) {
+                val range = OrgRange.parseOrNull(timeString) ?: return
 
-            // Expand each note if it has a repeater or is a range
-            val days = AgendaUtils.expandOrgDateTime(times, now, agendaDays)
+                val expandable = ExpandableOrgRange.fromRange(timeType, range)
 
-            // Add each note instance to its day bucket
-            days.forEach { day ->
+                val times = AgendaUtils.expandOrgDateTime(expandable, now, agendaDays)
 
-                val bucketKey = day.millis
+                // Add each note instance to its day bucket
+                times.forEach { time ->
+                    val bucketKey = time.withTimeAtStartOfDay().millis
 
-                val dedupKey = Pair(bucketKey, note.note.id)
-
-                if (!dedup.contains(dedupKey)) {
                     dayBuckets[bucketKey]?.let {
-                        it.add(AgendaItem.Note(index, note))
-                        item2databaseIds[index] = note.note.id
-                        index++
+                        it.add(AgendaItem.Note(agendaItemId, note, timeType))
+                        item2databaseIds[agendaItemId] = note.note.id
+                        agendaItemId++
                     }
-
-                    dedup.add(dedupKey)
                 }
+            }
+
+            // Add planning times for a note only once
+            if (!addedPlanningTimes.contains(note.note.id)) {
+                note.scheduledRangeString?.let {
+                    addInstances(TimeType.SCHEDULED, it)
+                }
+                note.deadlineRangeString?.let {
+                    addInstances(TimeType.DEADLINE, it)
+                }
+
+                addedPlanningTimes.add(note.note.id)
+            }
+
+            // Add each note's event
+            note.eventString?.let {
+                addInstances(TimeType.EVENT, it)
             }
         }
 

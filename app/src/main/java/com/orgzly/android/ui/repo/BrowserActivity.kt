@@ -10,9 +10,11 @@ import android.widget.*
 import androidx.databinding.DataBindingUtil
 import com.orgzly.BuildConfig
 import com.orgzly.R
+import com.orgzly.android.App
 import com.orgzly.android.repos.DirectoryRepo
 import com.orgzly.android.ui.CommonActivity
 import com.orgzly.android.ui.dialogs.SimpleOneLinerDialog
+import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.util.AppPermissions
 import com.orgzly.android.util.LogUtils
 import com.orgzly.android.util.UriUtils
@@ -38,6 +40,8 @@ class BrowserActivity :
     private var isFileSelectable: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        App.appComponent.inject(this)
+
         super.onCreate(savedInstanceState)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_browser)
@@ -127,7 +131,7 @@ class BrowserActivity :
                 .show(supportFragmentManager, SimpleOneLinerDialog.FRAGMENT_TAG)
     }
 
-    override fun onSimpleOneLinerDialogValue(id: Int, value: String?, bundle: Bundle?) {
+    override fun onSimpleOneLinerDialogValue(id: Int, value: String, bundle: Bundle?) {
         val file = File(currentItem, value)
 
         if (file.mkdir()) {
@@ -161,9 +165,9 @@ class BrowserActivity :
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, outState)
-
         super.onSaveInstanceState(outState)
+
+        if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, outState)
 
         outState.putString(ARG_DIRECTORY, currentItem)
     }
@@ -171,17 +175,19 @@ class BrowserActivity :
     override fun onItemClick(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
         val item = listView.getItemAtPosition(position) as BrowserItem
 
-        if (currentItem != null) {
-            if (item.isUp) {
-                val path = File(currentItem)
+        val current = currentItem
 
-                if (path.parentFile != null) {
-                    nextItem = path.parentFile.absolutePath
+        if (current != null) {
+            if (item.isUp) {
+                val path = File(current)
+
+                path.parentFile?.let { parentFile ->
+                    nextItem = parentFile.absolutePath
                     loadFileListFromNext(false)
                 }
 
             } else {
-                val sel = File(currentItem, item.name)
+                val sel = File(current, item.name)
 
                 if (sel.isDirectory) {
                     nextItem = sel.absolutePath
@@ -256,30 +262,32 @@ class BrowserActivity :
     private fun loadFileList(files: Array<File>) {
         if (BuildConfig.LOG_DEBUG) LogUtils.d(TAG, "Loading file list for $nextItem")
 
-        val nextPath = File(nextItem)
+        nextItem?.let {
+            val nextPath = File(it)
 
-        val fileList = Arrays.asList(*files)
-        Collections.sort(fileList, SortOrder())
+            val fileList = files.asList()
+            Collections.sort(fileList, SortOrder())
 
-        val icons = getIconResources()
+            val icons = getIconResources()
 
-        itemList.clear()
+            itemList.clear()
 
-        itemList.add(BrowserItem("Up", icons.first, true))
+            itemList.add(BrowserItem("Up", icons.first, true))
 
-        for (file in fileList) {
-            if (File(nextPath, file.name).isDirectory) {
-                itemList.add(BrowserItem(file.name, icons.third))
-            } else {
-                itemList.add(BrowserItem(file.name, icons.second))
+            for (file in fileList) {
+                if (File(nextPath, file.name).isDirectory) {
+                    itemList.add(BrowserItem(file.name, icons.third))
+                } else {
+                    itemList.add(BrowserItem(file.name, icons.second))
+                }
             }
+
+            /* Current directory has been updated. */
+
+            currentItem = it
+
+            supportActionBar?.title = nextPath.name
         }
-
-        /* Current directory has been updated. */
-
-        currentItem = nextItem
-
-        supportActionBar?.title = nextPath.name
     }
 
     internal inner class SortOrder : Comparator<File> {
@@ -296,21 +304,11 @@ class BrowserActivity :
     }
 
     private fun getIconResources(): Triple<Int, Int, Int> {
-        val typedArray = obtainStyledAttributes(R.styleable.Icons)
-
-        return if (typedArray != null) {
-            val triple = Triple(
+        return styledAttributes(R.styleable.Icons) { typedArray ->
+            Triple(
                     typedArray.getResourceId(R.styleable.Icons_ic_keyboard_arrow_up_24dp, 0),
                     typedArray.getResourceId(R.styleable.Icons_ic_insert_drive_file_24dp, 0),
-                    typedArray.getResourceId(R.styleable.Icons_ic_folder_open_24dp, 0)
-            )
-
-            typedArray.recycle()
-
-            triple
-
-        } else {
-            Triple(0, 0, 0)
+                    typedArray.getResourceId(R.styleable.Icons_ic_folder_open_24dp, 0))
         }
     }
 

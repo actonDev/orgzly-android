@@ -6,9 +6,8 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
+import androidx.annotation.StringRes
 import androidx.preference.*
 import com.orgzly.BuildConfig
 import com.orgzly.R
@@ -19,6 +18,7 @@ import com.orgzly.android.ui.CommonActivity
 import com.orgzly.android.ui.NoteStates
 import com.orgzly.android.ui.notifications.Notifications
 import com.orgzly.android.ui.util.ActivityUtils
+import com.orgzly.android.ui.util.styledAttributes
 import com.orgzly.android.usecase.NoteReparseStateAndTitles
 import com.orgzly.android.usecase.NoteSyncCreatedAtTimeWithProperty
 import com.orgzly.android.usecase.UseCase
@@ -33,6 +33,12 @@ import java.util.*
 class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedPreferenceChangeListener {
     private var listener: Listener? = null
 
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+
+        listener = activity as Listener
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         addPreferencesFromResource()
 
@@ -40,11 +46,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     }
 
     private fun addPreferencesFromResource() {
-        val resourceName = arguments?.getString(ARG_RESOURCE)
-
-        when (resourceName) {
+        when (val resourceName = arguments?.getString(ARG_RESOURCE)) {
             null -> addPreferencesFromResource(R.xml.prefs) // Headings
-
             in PREFS_RESOURCES -> addPreferencesFromResource(PREFS_RESOURCES.getValue(resourceName))
         }
     }
@@ -57,15 +60,16 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 //            }
 //        }
 
-        findPreference(getString(R.string.pref_key_clear_database))?.let {
-            it.setOnPreferenceClickListener { _ ->
+
+        preference(R.string.pref_key_clear_database)?.let {
+            it.setOnPreferenceClickListener {
                 listener?.onDatabaseClearRequest()
                 true
             }
         }
 
-        findPreference(getString(R.string.pref_key_reload_getting_started))?.let {
-            it.setOnPreferenceClickListener { _ ->
+        preference(R.string.pref_key_reload_getting_started)?.let {
+            it.setOnPreferenceClickListener {
                 listener?.onGettingStartedNotebookReloadRequest()
                 true
             }
@@ -77,9 +81,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
         /* Disable changing the language if it's not supported in this version. */
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            val pref = findPreference(getString(R.string.pref_key_ignore_system_locale))
-            if (pref != null) {
-                preferenceScreen.removePreference(pref)
+            preference(R.string.pref_key_ignore_system_locale)?.let {
+                preferenceScreen.removePreference(it)
             }
         }
 
@@ -88,47 +91,36 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     }
 
     private fun setupVersionPreference() {
-        findPreference(getString(R.string.pref_key_version))?.let { pref ->
+        preference(R.string.pref_key_version)?.let { pref ->
             /* Set summary to the current version string, appending suffix for the flavor. */
             pref.summary = BuildConfig.VERSION_NAME + BuildConfig.VERSION_NAME_SUFFIX
 
             /* Display changelog dialog when version is clicked. */
-            pref.setOnPreferenceClickListener { _ ->
+            pref.setOnPreferenceClickListener {
                 listener?.onWhatsNewDisplayRequest()
                 true
             }
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val view = super.onCreateView(inflater, container, savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         /*
          * Set fragment's background.
          */
-        if (view != null) {
-            val textSizeAttr = intArrayOf(R.attr.item_book_card_bg_color)
-            val typedArray = view.context.obtainStyledAttributes(textSizeAttr)
-            val color = typedArray.getColor(0, -1)
-            typedArray.recycle()
+        val color = view.context.styledAttributes(R.styleable.ColorScheme) { typedArray ->
+            typedArray.getColor(R.styleable.ColorScheme_item_book_card_bg_color, -1)
+        }
 
-            if (color != -1) {
-                view.setBackgroundColor(color)
-            }
+        if (color != -1) {
+            view.setBackgroundColor(color)
         }
 
         /* Remove dividers. */
 //        view?.findViewById(android.R.id.list)?.let {
 //            (it as? ListView)?.divider = null
 //        }
-
-        return view
-    }
-
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-
-        listener = activity as Listener
     }
 
     /*
@@ -227,8 +219,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
             // Update default priority when minimum priority changes
             getString(R.string.pref_key_min_priority) -> {
-                findPreference(getString(R.string.pref_key_default_priority))?.let {
-                    val pref = it as ListPreferenceWithValueAsSummary
+                preference(R.string.pref_key_default_priority)?.let {
+                    val pref = it as ListPreference
 
                     val defPri = AppPreferences.defaultPriority(context)
                     val minPri = sharedPreferences.getString(key, null)
@@ -244,8 +236,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
             // Update minimum priority when default priority changes
             getString(R.string.pref_key_default_priority) -> {
-                findPreference(getString(R.string.pref_key_min_priority))?.let {
-                    val pref = it as ListPreferenceWithValueAsSummary
+                preference(R.string.pref_key_min_priority)?.let {
+                    val pref = it as ListPreference
 
                     val minPri = AppPreferences.minPriority(context)
                     val defPri = sharedPreferences.getString(key, null)
@@ -300,14 +292,14 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
          * - Changing states or priorities can affect the displayed data
          * - Enabling or disabling reminders needs to trigger reminder service notification
          */
-        ReminderService.notifyDataChanged(context)
-        ListWidgetProvider.notifyDataChanged(context)
+        ReminderService.notifyForDataChanged(requireContext())
+        ListWidgetProvider.notifyDataChanged(requireContext())
     }
 
     private fun updateRemindersScreen() {
-        val scheduled = findPreference(getString(R.string.pref_key_use_reminders_for_scheduled_times))
-        val deadline = findPreference(getString(R.string.pref_key_use_reminders_for_deadline_times))
-        val event = findPreference(getString(R.string.pref_key_use_reminders_for_event_times))
+        val scheduled = preference(R.string.pref_key_use_reminders_for_scheduled_times)
+        val deadline = preference(R.string.pref_key_use_reminders_for_deadline_times)
+        val event = preference(R.string.pref_key_use_reminders_for_event_times)
 
         if (scheduled != null && deadline != null && event != null) {
             val remindersEnabled =
@@ -316,25 +308,24 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
                             || (event as TwoStatePreference).isChecked
 
             /* These do not exist on Oreo and later */
-            findPreference(getString(R.string.pref_key_reminders_sound))?.isEnabled = remindersEnabled
-            findPreference(getString(R.string.pref_key_reminders_led))?.isEnabled = remindersEnabled
-            findPreference(getString(R.string.pref_key_reminders_vibrate))?.isEnabled = remindersEnabled
+            preference(R.string.pref_key_reminders_sound)?.isEnabled = remindersEnabled
+            preference(R.string.pref_key_reminders_led)?.isEnabled = remindersEnabled
+            preference(R.string.pref_key_reminders_vibrate)?.isEnabled = remindersEnabled
 
             /* This does not exist before Oreo. */
-            findPreference(getString(R.string.pref_key_reminders_channel_notification_settings))?.isEnabled = remindersEnabled
+            preference(R.string.pref_key_reminders_channel_notification_settings)?.isEnabled = remindersEnabled
 
-            findPreference(getString(R.string.pref_key_snooze_time)).isEnabled = remindersEnabled
-            findPreference(getString(R.string.pref_key_snooze_type)).isEnabled = remindersEnabled
+            preference(R.string.pref_key_snooze_time)?.isEnabled = remindersEnabled
+            preference(R.string.pref_key_snooze_type)?.isEnabled = remindersEnabled
         }
     }
-
 
     /**
      * Update list of possible states that can be used as default for a new note.
      */
     private fun setDefaultStateForNewNote() {
-        findPreference(getString(R.string.pref_key_new_note_state))?.let {
-            val pref = it as ListPreferenceWithValueAsSummary
+        preference(R.string.pref_key_new_note_state)?.let {
+            val pref = it as ListPreference
 
             /* NOTE followed by to-do keywords */
             val entries = LinkedHashSet<CharSequence>()
@@ -369,6 +360,10 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         return super.onPreferenceTreeClick(preference)
     }
 
+    private fun preference(@StringRes resId: Int): Preference? {
+        return findPreference(getString(resId))
+    }
+
     interface Listener {
         fun onNotesUpdateRequest(action: UseCase)
         fun onDatabaseClearRequest()
@@ -383,7 +378,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
 
         val FRAGMENT_TAG: String = SettingsFragment::class.java.name
 
-        private val ARG_RESOURCE = "resource"
+        private const val ARG_RESOURCE = "resource"
 
         /* Using headers file & fragments didn't work well - transitions were
          * not smooth, previous fragment would be briefly displayed.

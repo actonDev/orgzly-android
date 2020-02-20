@@ -9,6 +9,7 @@ import android.util.Log;
 
 import com.orgzly.BuildConfig;
 import com.orgzly.android.BookName;
+import com.orgzly.android.db.entity.Repo;
 import com.orgzly.android.util.LogUtils;
 import com.orgzly.android.util.MiscUtils;
 
@@ -28,21 +29,32 @@ public class ContentRepo implements SyncRepo {
 
     public static final String SCHEME = "content";
 
-    private final Context context;
+    private final long repoId;
     private final Uri repoUri;
+
+    private final Context context;
 
     private final DocumentFile repoDocumentFile;
 
-    public ContentRepo(Context context, Uri uri) throws IOException {
-        this.context = context;
-        this.repoUri = uri;
+    public ContentRepo(RepoWithProps repoWithProps, Context context) {
+        Repo repo = repoWithProps.getRepo();
 
-        this.repoDocumentFile = DocumentFile.fromTreeUri(context, uri);
+        this.repoId = repo.getId();
+        this.repoUri = Uri.parse(repo.getUrl());
+
+        this.context = context;
+
+        this.repoDocumentFile = DocumentFile.fromTreeUri(context, repoUri);
     }
 
     @Override
-    public boolean requiresConnection() {
+    public boolean isConnectionRequired() {
         return false;
+    }
+
+    @Override
+    public boolean isAutoSyncSupported() {
+        return true;
     }
 
     @Override
@@ -74,6 +86,8 @@ public class ContentRepo implements SyncRepo {
                     }
 
                     result.add(new VersionedRook(
+                            repoId,
+                            RepoType.DOCUMENT,
                             getUri(),
                             file.getUri(),
                             String.valueOf(file.lastModified()),
@@ -94,6 +108,10 @@ public class ContentRepo implements SyncRepo {
         DocumentFile sourceFile = repoDocumentFile.findFile(fileName);
         if (sourceFile == null) {
             throw new FileNotFoundException("Book " + fileName + " not found in " + repoUri);
+        } else {
+            if (BuildConfig.LOG_DEBUG) {
+                LogUtils.d(TAG, "Found DocumentFile for " + fileName + ": " + sourceFile.getUri());
+            }
         }
 
         /* "Download" the file. */
@@ -104,7 +122,7 @@ public class ContentRepo implements SyncRepo {
         String rev = String.valueOf(sourceFile.lastModified());
         long mtime = sourceFile.lastModified();
 
-        return new VersionedRook(repoUri, sourceFile.getUri(), rev, mtime);
+        return new VersionedRook(repoId, RepoType.DOCUMENT, repoUri, sourceFile.getUri(), rev, mtime);
     }
 
     @Override
@@ -141,7 +159,7 @@ public class ContentRepo implements SyncRepo {
         String rev = String.valueOf(destinationFile.lastModified());
         long mtime = System.currentTimeMillis();
 
-        return new VersionedRook(getUri(), uri, rev, mtime);
+        return new VersionedRook(repoId, RepoType.DOCUMENT, getUri(), uri, rev, mtime);
     }
 
     @Override
@@ -162,7 +180,7 @@ public class ContentRepo implements SyncRepo {
             long mtime = fromDocFile.lastModified();
             String rev = String.valueOf(mtime);
 
-            return new VersionedRook(getUri(), newUri, rev, mtime);
+            return new VersionedRook(repoId, RepoType.DOCUMENT, getUri(), newUri, rev, mtime);
 
         } else {
             /*
